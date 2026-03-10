@@ -14,10 +14,7 @@ const val sandboxID = ""
 // 2. 你的硬编码配置
 const val hardcodedUrl = "wss://openclaw.levis.xin"
 
-const val hardcodedToken =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjIwODg1MTI2NzgsImlkZW50aXR5IjoibXktcGhvbmUiLCJpc3MiOiJB" +
-    "UElOeWVTekh3endwcUciLCJuYW1lIjoibXktcGhvbmUiLCJuYmYiOjE3NzMxNTI2NzgsInN1YiI6Im15LXBob25lIiwidmlkZW8iOn" +
-    "sicm9vbSI6Im15LXByaXZhdGUtcm9vbSIsInJvb21Kb2luIjp0cnVlfX0.tf7HZmqnGEElnWyX4_N5GtAwf_AmxxKf2KJZZBX62fI"
+const val hardcodedToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjIwODg1MjA3ODgsImlkZW50aXR5IjoibXktcGhvbmUiLCJpc3MiOiJBUElOeWVTekh3endwcUciLCJuYW1lIjoibXktcGhvbmUiLCJuYmYiOjE3NzMxNjA3ODgsInJvb21Db25maWciOnsiYWdlbnRzIjpbeyJhZ2VudE5hbWUiOiJ4aWFvbWVuZy1hZ2VudCJ9XX0sInN1YiI6Im15LXBob25lIiwidmlkZW8iOnsicm9vbSI6Im15LXByaXZhdGUtcm9vbSIsInJvb21Kb2luIjp0cnVlfX0.xQhY6fYm0ehIu-oeZMDKLg4vHeioYvvQPxfcril1pRM"
 
 /**
  * 获取连接来源的函数
