@@ -7,24 +7,23 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
 import io.livekit.android.LiveKit
 import io.livekit.android.RoomOptions
 import io.livekit.android.example.voiceassistant.screen.VoiceAssistantRoute
 import io.livekit.android.room.Room
-import io.livekit.android.token.TokenSource
-import io.livekit.android.token.cached
+import io.livekit.android.room.participant.LocalParticipant
 import io.livekit.android.room.track.AudioCaptureOptions
 import io.livekit.android.room.track.LocalAudioTrack
 import io.livekit.android.room.track.LocalAudioTrackOptions
 import io.livekit.android.room.track.Track
-import io.livekit.android.room.participant.LocalParticipant
-import kotlinx.coroutines.CoroutineScope
+import io.livekit.android.token.TokenSource
+import io.livekit.android.token.cached
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 
 class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedStateHandle) : AndroidViewModel(application) {
