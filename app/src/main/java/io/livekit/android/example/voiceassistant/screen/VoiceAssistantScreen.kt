@@ -239,6 +239,8 @@ fun VoiceAssistant(
                 isChatEnabled = chatVisible,
                 onChatClick = { chatVisible = !chatVisible },
                 onExitClick = onEndCall,
+                isHiFiMode = viewModel.isHiFiMode,
+                onAudioModeChange = { isHiFi -> viewModel.toggleAudioMode(isHiFi) },
                 modifier = Modifier
                     .layoutId(LAYOUT_ID_CONTROL_BAR)
             )
