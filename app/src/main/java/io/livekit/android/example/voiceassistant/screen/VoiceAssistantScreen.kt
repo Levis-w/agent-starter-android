@@ -248,9 +248,10 @@ fun VoiceAssistant(
                 onChatClick = { chatVisible = !chatVisible },
                 onExitClick = onEndCall,
                 isHiFiMode = viewModel.isHiFiMode,
-                onAudioModeChange = { isHiFi -> viewModel.toggleAudioMode(isHiFi) },
-                modifier = Modifier
-                    .layoutId(LAYOUT_ID_CONTROL_BAR)
+                onAudioModeChange = { isHiFi: Boolean ->
+                    viewModel.switchAudioMode(isHiFi) 
+                },
+                modifier = Modifier.layoutId(LAYOUT_ID_CONTROL_BAR)
             )
 
             val cameraAlpha by animateFloatAsState(targetValue = if (isCameraEnabled) 1f else 0f, label = "Camera Alpha")
