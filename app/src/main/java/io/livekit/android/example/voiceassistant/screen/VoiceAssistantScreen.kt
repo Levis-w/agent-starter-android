@@ -147,6 +147,12 @@ fun VoiceAssistant(
         LaunchedEffect(canEnableMic, requestedAudio) {
             session.waitUntilConnected()
             localMedia.setMicrophoneEnabled(canEnableMic && requestedAudio)
+            if (canEnableMic && requestedAudio) {
+                // 等待首次开启完成
+                kotlinx.coroutines.delay(500)
+                // 👇 调用我们新的超级切换器，来设置初始模式
+                viewModel.switchAudioMode(viewModel.isHiFiMode) 
+            }
         }
 
         LaunchedEffect(canEnableVideo, requestedVideo) {
