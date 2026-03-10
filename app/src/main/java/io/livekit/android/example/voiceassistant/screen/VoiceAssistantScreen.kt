@@ -146,12 +146,14 @@ fun VoiceAssistant(
 
         LaunchedEffect(canEnableMic, requestedAudio) {
             session.waitUntilConnected()
+            // 首次开启麦克风
             localMedia.setMicrophoneEnabled(canEnableMic && requestedAudio)
+            
             if (canEnableMic && requestedAudio) {
-                // 等待首次开启完成
-                kotlinx.coroutines.delay(500)
-                // 👇 调用我们新的超级切换器，来设置初始模式
-                viewModel.switchAudioMode(viewModel.isHiFiMode) 
+                // 【初始猛踹】等待首次开启完成后，立即执行一次“重置切换”
+                // 这样一进房间就是高清媒体模式
+                kotlinx.coroutines.delay(600)
+                viewModel.switchAudioMode(viewModel.isHiFiMode)
             }
         }
 
