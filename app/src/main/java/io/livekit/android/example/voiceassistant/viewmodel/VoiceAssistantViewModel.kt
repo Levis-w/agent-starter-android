@@ -11,11 +11,11 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.SavedStateHandle
 import androidx.navigation.toRoute
 import io.livekit.android.LiveKit
+import io.livekit.android.RoomOptions
 import io.livekit.android.example.voiceassistant.screen.VoiceAssistantRoute
 import io.livekit.android.room.Room
 import io.livekit.android.token.TokenSource
 import io.livekit.android.token.cached
-import io.livekit.android.room.RoomOptions
 import io.livekit.android.room.track.AudioCaptureOptions
 import io.livekit.android.room.track.LocalAudioTrack
 import io.livekit.android.room.track.LocalAudioTrackOptions
