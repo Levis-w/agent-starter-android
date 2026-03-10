@@ -3,6 +3,7 @@ package io.livekit.android.example.voiceassistant.viewmodel
 import android.app.Application
 import android.content.Context
 import android.media.AudioManager
+import android.media.AudioAttributes // 新增
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -11,6 +12,8 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
 import io.livekit.android.LiveKit
+import io.livekit.android.LiveKitOverrides // 新增
+import io.livekit.android.audio.NoAudioHandler // 核心：禁用 SDK 自动管理
 import io.livekit.android.example.voiceassistant.screen.VoiceAssistantRoute
 import io.livekit.android.room.Room
 import io.livekit.android.room.participant.LocalParticipant
@@ -26,23 +29,35 @@ import kotlinx.coroutines.launch
 class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedStateHandle) : AndroidViewModel(application) {
     
     private val audioManager = application.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-    
-    // UI 状态变量
     var isHiFiMode by mutableStateOf(true)
     
-    // ✅ 适配 2.23.5：直接使用默认创建，避开所有不确定的 Options 类路径
-    // 我们通过后面的 switchAudioMode 连招来接管音频质量
-    val room: Room = LiveKit.create(application)
+    // ✅ 【最关键的修改】禁用 LiveKit 的自动音频处理器
+    // 这让 LiveKit 变得像 Web 浏览器一样“笨”，不再自动强切通话模式
+    val room: Room = LiveKit.create(
+        appContext = application,
+        overrides = LiveKitOverrides(
+            audioHandler = NoAudioHandler() 
+        )
+    )
 
-    /**
-     * 【核心连招：强制重置音频管道】
-     * 逻辑：切换系统路由 -> 停用并卸载当前轨道 -> 以新硬件参数重开轨道
-     */
     fun switchAudioMode(switchToHiFi: Boolean) {
         isHiFiMode = switchToHiFi
         
         viewModelScope.launch(Dispatchers.IO) {
-            // 1. 设置系统音频模式
+            // 1. 彻底断开当前音轨
+            val localParticipant: LocalParticipant = room.localParticipant
+            val trackPub = localParticipant.getTrackPublication(Track.Source.MICROPHONE)
+            val oldTrack = trackPub?.track as? LocalAudioTrack
+            
+            if (oldTrack != null) {
+                localParticipant.unpublishTrack(oldTrack)
+                oldTrack.stop()
+            }
+            
+            delay(400) // 等待硬件彻底释放
+
+            // 2. 强行设置 AudioManager 模式
+            // 因为禁用了 NoAudioHandler，现在这个设置不会被 SDK 改回去了
             if (switchToHiFi) {
                 audioManager.mode = AudioManager.MODE_NORMAL
                 audioManager.isSpeakerphoneOn = true
@@ -50,39 +65,23 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
                 audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
                 audioManager.isSpeakerphoneOn = false
             }
-            
-            // 2. 找到当前正在运行的麦克风轨道并将其“断开”
-            val localParticipant: LocalParticipant = room.localParticipant
-            // 2.23.5 版本获取轨道的方式
-            val trackPub = localParticipant.getTrackPublication(Track.Source.MICROPHONE)
-            val oldTrack = trackPub?.track as? LocalAudioTrack
-            
-            if (oldTrack != null) {
-                // 卸载轨道：这等同于 Web 端的流重置，会强迫系统释放 AudioRecord
-                localParticipant.unpublishTrack(oldTrack)
-                oldTrack.stop() 
-            }
-            
-            // 3. 关键等待：给 Android 底层硬件状态机 400ms 时间彻底重置
-            delay(400) 
-            
-            // 4. 定义全新的硬件采集选项（针对 2.23.5 版本）
-            // 如果是媒体模式(HiFi)，关闭降噪和增益，强制系统进入高质量采集
+
+            // 3. 创建新音轨
             val newAudioOptions = LocalAudioTrackOptions(
                 echoCancellation = true,
                 noiseSuppression = !switchToHiFi, 
                 autoGainControl = !switchToHiFi
             )
             
-            // 5. 重新创建并发布轨道
-            // 这是 2.23.5 的标准方法名和参数
             val newTrack = localParticipant.createAudioTrack("microphone", options = newAudioOptions)
             localParticipant.publishAudioTrack(newTrack)
             
-            // 6. 二次强制锁定（防止部分国产机型在开启轨道时自动回切通话模式）
-            delay(200)
+            // 4. 【额外补刀】强制将音轨类型标记为媒体流
+            delay(300)
             if (switchToHiFi) {
                 audioManager.mode = AudioManager.MODE_NORMAL
+                // 再次确保扬声器打开
+                audioManager.isSpeakerphoneOn = true 
             }
         }
     }
