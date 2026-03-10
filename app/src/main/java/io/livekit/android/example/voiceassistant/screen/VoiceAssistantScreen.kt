@@ -104,7 +104,8 @@ fun VoiceAssistant(
     val session = rememberSession(
         tokenSource = viewModel.tokenSource,
         options = SessionOptions(
-            room = viewModel.room
+            room = viewModel.room,
+            agentName = "xiaomeng-agent"
         )
     )
 
