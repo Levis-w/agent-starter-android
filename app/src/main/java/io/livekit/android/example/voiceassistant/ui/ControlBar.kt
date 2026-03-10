@@ -74,9 +74,11 @@ fun ControlBar(
     isChatEnabled: Boolean,
     onChatClick: () -> Unit,
     onExitClick: () -> Unit,
-    isHiFiMode: Boolean = true,
-    onAudioModeChange: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
+    isHiFiMode = viewModel.isHiFiMode,
+    onAudioModeChange = { isHiFi -> 
+        viewModel.switchAudioMode(isHiFi) 
+    },
+    modifier = Modifier.layoutId(LAYOUT_ID_CONTROL_BAR)
 ) {
     var audioModeMenuExpanded by remember { mutableStateOf(false) }
     
