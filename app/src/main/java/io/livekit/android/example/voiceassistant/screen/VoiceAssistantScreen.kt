@@ -105,7 +105,7 @@ fun VoiceAssistant(
         tokenSource = viewModel.tokenSource,
         options = SessionOptions(
             room = viewModel.room,
-            agentName = "xiaomeng-agent"
+            agent = "xiaomeng-agent"
         )
     )
 
