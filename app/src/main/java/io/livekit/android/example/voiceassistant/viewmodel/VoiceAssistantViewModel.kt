@@ -73,8 +73,8 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
 
             // 4. 创建新硬件参数：媒体模式下必须关掉 NS/AGC 才能骗过系统
             val newAudioOptions = LocalAudioTrackOptions(
-                echoCancellation = true,
-                noiseSuppression = true, 
+                echoCancellation = !switchToHiFi,
+                noiseSuppression = !switchToHiFi, 
                 autoGainControl = !switchToHiFi
             )
             
