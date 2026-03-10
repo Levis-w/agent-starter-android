@@ -10,12 +10,12 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
+import io.livekit.android.AudioCaptureOptions // ✅ 2.23.1 正确路径
 import io.livekit.android.LiveKit
-import io.livekit.android.RoomOptions
+import io.livekit.android.RoomOptions // ✅ 2.23.1 正确路径
 import io.livekit.android.example.voiceassistant.screen.VoiceAssistantRoute
 import io.livekit.android.room.Room
 import io.livekit.android.room.participant.LocalParticipant
-import io.livekit.android.room.track.AudioCaptureOptions
 import io.livekit.android.room.track.LocalAudioTrack
 import io.livekit.android.room.track.LocalAudioTrackOptions
 import io.livekit.android.room.track.Track
