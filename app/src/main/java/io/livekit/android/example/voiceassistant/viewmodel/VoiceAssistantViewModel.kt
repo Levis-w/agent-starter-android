@@ -10,9 +10,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
-import io.livekit.android.AudioCaptureOptions // ✅ 2.23.1 正确路径
 import io.livekit.android.LiveKit
-import io.livekit.android.RoomOptions // ✅ 2.23.1 正确路径
 import io.livekit.android.example.voiceassistant.screen.VoiceAssistantRoute
 import io.livekit.android.room.Room
 import io.livekit.android.room.participant.LocalParticipant
@@ -25,19 +23,26 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-
 class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedStateHandle) : AndroidViewModel(application) {
     
     private val audioManager = application.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     
+    // UI 状态变量
     var isHiFiMode by mutableStateOf(true)
-    val room: Room = LiveKit.create(application)
     
+    // ✅ 适配 2.23.5：直接使用默认创建，避开所有不确定的 Options 类路径
+    // 我们通过后面的 switchAudioMode 连招来接管音频质量
+    val room: Room = LiveKit.create(application)
+
+    /**
+     * 【核心连招：强制重置音频管道】
+     * 逻辑：切换系统路由 -> 停用并卸载当前轨道 -> 以新硬件参数重开轨道
+     */
     fun switchAudioMode(switchToHiFi: Boolean) {
         isHiFiMode = switchToHiFi
-
+        
         viewModelScope.launch(Dispatchers.IO) {
-            // 1. 设置 AudioManager 路由
+            // 1. 设置系统音频模式
             if (switchToHiFi) {
                 audioManager.mode = AudioManager.MODE_NORMAL
                 audioManager.isSpeakerphoneOn = true
@@ -45,32 +50,36 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
                 audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
                 audioManager.isSpeakerphoneOn = false
             }
-
-            // 2. 模拟 Web 端的“断开连接”：卸载当前的麦克风轨道
-            val localParticipant = room.localParticipant
-            val oldTrack = localParticipant.getTrackPublication(Track.Source.MICROPHONE)?.track as? LocalAudioTrack
+            
+            // 2. 找到当前正在运行的麦克风轨道并将其“断开”
+            val localParticipant: LocalParticipant = room.localParticipant
+            // 2.23.5 版本获取轨道的方式
+            val trackPub = localParticipant.getTrackPublication(Track.Source.MICROPHONE)
+            val oldTrack = trackPub?.track as? LocalAudioTrack
             
             if (oldTrack != null) {
+                // 卸载轨道：这等同于 Web 端的流重置，会强迫系统释放 AudioRecord
                 localParticipant.unpublishTrack(oldTrack)
-                oldTrack.stop() // 彻底停止旧的硬件占用
+                oldTrack.stop() 
             }
-
-            // 3. 关键的等待：让系统释放 AudioRecord 资源
-            delay(300) 
-
-            // 4. 定义新的硬件采集参数（这步最关键）
-            val newOptions = LocalAudioTrackOptions(
-                echoCancellation = true, // 始终开启回声消除
-                // 如果是媒体模式，强行关掉降噪和增益（防止系统判定为通话）
+            
+            // 3. 关键等待：给 Android 底层硬件状态机 400ms 时间彻底重置
+            delay(400) 
+            
+            // 4. 定义全新的硬件采集选项（针对 2.23.5 版本）
+            // 如果是媒体模式(HiFi)，关闭降噪和增益，强制系统进入高质量采集
+            val newAudioOptions = LocalAudioTrackOptions(
+                echoCancellation = true,
                 noiseSuppression = !switchToHiFi, 
                 autoGainControl = !switchToHiFi
             )
-
-            // 5. 重新发布轨道：相当于 Web 端的“重连并获取新流”
-            val newTrack = localParticipant.createAudioTrack("microphone", newOptions)
+            
+            // 5. 重新创建并发布轨道
+            // 这是 2.23.5 的标准方法名和参数
+            val newTrack = localParticipant.createAudioTrack("microphone", options = newAudioOptions)
             localParticipant.publishAudioTrack(newTrack)
             
-            // 6. 再次确认模式（防止 SDK 内部再次抢占）
+            // 6. 二次强制锁定（防止部分国产机型在开启轨道时自动回切通话模式）
             delay(200)
             if (switchToHiFi) {
                 audioManager.mode = AudioManager.MODE_NORMAL
