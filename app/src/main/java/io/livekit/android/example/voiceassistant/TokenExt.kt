@@ -6,5 +6,5 @@ const val sandboxID = ""
 // NOTE: If you prefer not to use LiveKit Sandboxes for testing, you can generate your
 // tokens manually by visiting https://cloud.livekit.io/projects/p_/settings/keys
 // and using one of your API Keys to generate a token with custom TTL and permissions.
-const val hardcodedUrl = ""
-const val hardcodedToken = ""
+const val hardcodedUrl = "wss://openclaw.levis.xin"
+const val hardcodedToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjIwODg1MTI2NzgsImlkZW50aXR5IjoibXktcGhvbmUiLCJpc3MiOiJBUElOeWVTekh3endwcUciLCJuYW1lIjoibXktcGhvbmUiLCJuYmYiOjE3NzMxNTI2NzgsInN1YiI6Im15LXBob25lIiwidmlkZW8iOnsicm9vbSI6Im15LXByaXZhdGUtcm9vbSIsInJvb21Kb2luIjp0cnVlfX0.tf7HZmqnGEElnWyX4_N5GtAwf_AmxxKf2KJZZBX62fI"
