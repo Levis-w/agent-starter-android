@@ -39,21 +39,34 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
     private val audioManager = application.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     var currentMode by mutableStateOf(AudioMode.MEDIA_HIFI)
     
-    val room: Room = LiveKit.create(
-        appContext = application,
-        overrides = LiveKitOverrides(
-            audioOptions = AudioOptions(
+    var room: Room by mutableStateOf(createRoomInstance(AudioMode.MEDIA_HIFI))
+        private set
+
+    private fun createRoomInstance(mode: AudioMode): Room {
+        val audioOptions = when (mode) {
+            AudioMode.MEDIA_HIFI -> AudioOptions(
                 audioOutputType = AudioType.MediaAudioType(),
                 audioHandler = NoAudioHandler(),
                 javaAudioDeviceModuleCustomizer = { builder ->
                     builder
-                        .setAudioSource(MediaRecorder.AudioSource.MIC)
+                        .setAudioSource(MediaRecorder.AudioSource.VOICE_RECOGNITION)
                         .setUseHardwareAcousticEchoCanceler(false)
                         .setUseHardwareNoiseSuppressor(false)
                 }
             )
-        )
-    )
+            AudioMode.CALL_SPEAKER, AudioMode.CALL_EARPIECE -> AudioOptions(
+                audioOutputType = AudioType.CallAudioType(),
+                audioHandler = NoAudioHandler(),
+                javaAudioDeviceModuleCustomizer = { builder ->
+                    builder
+                        .setAudioSource(MediaRecorder.AudioSource.VOICE_COMMUNICATION)
+                        .setUseHardwareAcousticEchoCanceler(true)
+                        .setUseHardwareNoiseSuppressor(true)
+                }
+            )
+        }
+        return LiveKit.create(getApplication(), overrides = LiveKitOverrides(audioOptions = audioOptions))
+    }
 
     private fun applyAudioState(mode: AudioMode) {
         when (mode) {
@@ -73,34 +86,43 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
     }
 
     fun switchAudioMode(mode: AudioMode) {
+        if (currentMode == mode) return
         currentMode = mode
         
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
+            val token = tokenSource.getToken()
+            
+            val oldRoom = room
+            oldRoom.disconnect()
+            oldRoom.release()
+            
             applyAudioState(mode)
-
-            val localParticipant: LocalParticipant = room.localParticipant
-            val trackPub = localParticipant.getTrackPublication(Track.Source.MICROPHONE)
-            val oldTrack = trackPub?.track as? LocalAudioTrack
             
-            if (oldTrack != null) {
-                localParticipant.unpublishTrack(oldTrack)
-                oldTrack.stop()
+            val newRoom = createRoomInstance(mode)
+            room = newRoom
+            newRoom.connect(tokenSource.url, token)
+            
+            val localParticipant = newRoom.localParticipant
+            val audioOptions = if (mode == AudioMode.MEDIA_HIFI) {
+                LocalAudioTrackOptions(
+                    echoCancellation = true,
+                    noiseSuppression = true,
+                    autoGainControl = true,
+                    highPassFilter = true,
+                    typingNoiseDetection = true
+                )
+            } else {
+                LocalAudioTrackOptions(
+                    echoCancellation = false,
+                    noiseSuppression = false,
+                    autoGainControl = false,
+                    highPassFilter = false,
+                    typingNoiseDetection = false
+                )
             }
-            
-            delay(500) 
+            val track = localParticipant.createAudioTrack("microphone", options = audioOptions)
+            localParticipant.publishAudioTrack(track)
 
-            // 核心：所有模式统一强制开启软件 AEC
-            val newAudioOptions = LocalAudioTrackOptions(
-                echoCancellation = true,
-                noiseSuppression = true,
-                autoGainControl = true,
-                highPassFilter = true,
-                typingNoiseDetection = true
-            )
-            
-            val newTrack = localParticipant.createAudioTrack("microphone", options = newAudioOptions)
-            localParticipant.publishAudioTrack(newTrack)
-            
             launch {
                 repeat(10) {
                     applyAudioState(mode)
