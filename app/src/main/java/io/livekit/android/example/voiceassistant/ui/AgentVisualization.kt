@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -28,7 +27,6 @@ import io.livekit.android.compose.ui.ScaleType
 import io.livekit.android.compose.ui.VideoTrackView
 import io.livekit.android.compose.ui.audio.VoiceAssistantBarVisualizer
 import io.livekit.android.example.voiceassistant.ui.anim.CircleReveal
-import kotlinx.coroutines.delay
 import kotlin.math.max
 import kotlin.math.roundToInt
 
@@ -39,19 +37,17 @@ val hideSpringSpec = spring<Float>(stiffness = Spring.StiffnessMedium)
 @Composable
 fun AgentVisualization(
     agent: Agent,
-    modifier: Modifier = Modifier,
-    isConnected: Boolean = false
+    modifier: Modifier = Modifier
 ) {
 
     val videoTrack = agent.videoTrack
     val audioTrack = agent.audioTrack
 
     var hasFirstFrameRendered by remember(videoTrack) { mutableStateOf(false) }
-
-    // 回归逻辑：只要房间连上 (isConnected)，圆球就应该消失（展开动画）
-    // 如果有视频，则额外等待首帧渲染以避免闪烁
-    val revealed = remember(isConnected, videoTrack, hasFirstFrameRendered) {
-        isConnected && (videoTrack == null || hasFirstFrameRendered)
+    
+    // 如果有视频，等第一帧；如果只有音频（语音助手模式），只要音频轨道出现就显示
+    val revealed = remember(videoTrack, audioTrack, hasFirstFrameRendered) {
+        (videoTrack != null && hasFirstFrameRendered) || (videoTrack == null && audioTrack != null)
     }
 
     Box(modifier = modifier) {
@@ -60,7 +56,8 @@ fun AgentVisualization(
                 trackReference = videoTrack,
                 scaleType = ScaleType.FitInside,
                 onFirstFrameRendered = { hasFirstFrameRendered = true },
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize(),
             )
         }
         CircleReveal(
@@ -88,10 +85,9 @@ fun AgentVisualization(
                             return@derivedStateOf max(0f, (widthPx / height))
                         }
                     }
-
-                    // 核心修复：使用 agent 作为 key，确保重连房间后
-                    // 官方可视化组件能彻底重置其内部的音频处理器，重新捕获新房间的音频流引用
-                    androidx.compose.runtime.key(agent) {
+                    
+                    // 关键修复：使用 key(audioTrack) 确保在重连后，可视化器能正确绑定到新音轨
+                    androidx.compose.runtime.key(agent.audioTrack) {
                         VoiceAssistantBarVisualizer(
                             agentState = agent.agentState,
                             audioTrackRef = agent.audioTrack,
