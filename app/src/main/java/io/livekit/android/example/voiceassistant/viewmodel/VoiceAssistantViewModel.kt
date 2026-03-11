@@ -39,12 +39,15 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
         appContext = application,
         overrides = LiveKitOverrides(
             audioOptions = AudioOptions(
-                audioOutputType = AudioType.Media(), // 1. 强制输出走媒体通道
+                audioOutputType = AudioType.MediaAudioType(), // 1. 强制输出走媒体通道
                 audioHandler = NoAudioHandler(),     // 2. 彻底禁用 SDK 的自动切换
                 disableCommunicationModeWorkaround = true, // 3. 禁用 6秒自动切回
                 // 4. 【核心黑科技】强行修改硬件音源，安卓系统会彻底认为这不是电话
                 javaAudioDeviceModuleCustomizer = { builder ->
-                    builder.setAudioSource(MediaRecorder.AudioSource.MIC) 
+                    builder
+                        .setAudioSource(MediaRecorder.AudioSource.MIC)
+                        .setUseHardwareAcousticEchoCanceler(false)
+                        .setUseHardwareNoiseSuppressor(false) 
                 }
             )
         )
