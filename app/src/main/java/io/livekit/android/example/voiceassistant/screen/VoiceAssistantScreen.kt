@@ -103,7 +103,7 @@ fun VoiceAssistant(
     val canEnableVideo by rememberCanEnableCamera()
 
     val session = rememberSession(
-        tokenSource = viewModel.tokenSource,
+        tokenSource = io.livekit.android.token.TokenSource.fromLiteral("", ""), // 已经由 viewModel 接管 room，这里给个哑元即可
         options = SessionOptions(
             room = viewModel.room
         )
