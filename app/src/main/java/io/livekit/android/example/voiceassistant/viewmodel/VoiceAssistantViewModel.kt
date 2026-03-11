@@ -110,7 +110,7 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
                 LocalAudioTrackOptions(
                     echoCancellation = true,
                     noiseSuppression = true,
-                    autoGainControl = true,
+                    autoGainControl = false,
                     highPassFilter = true,
                     typingNoiseDetection = true
                 )
