@@ -43,7 +43,7 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
         appContext = application,
         overrides = LiveKitOverrides(
             audioOptions = AudioOptions(
-                audioOutputType = AudioType.CallAudioType(),
+                audioOutputType = AudioType.MediaAudioType(),
                 audioHandler = NoAudioHandler(),
                 javaAudioDeviceModuleCustomizer = { builder ->
                     builder
@@ -55,24 +55,28 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
         )
     )
 
+    private fun applyAudioState(mode: AudioMode) {
+        when (mode) {
+            AudioMode.MEDIA_HIFI -> {
+                audioManager.mode = AudioManager.MODE_NORMAL
+                audioManager.isSpeakerphoneOn = true
+            }
+            AudioMode.CALL_SPEAKER -> {
+                audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+                audioManager.isSpeakerphoneOn = true
+            }
+            AudioMode.CALL_EARPIECE -> {
+                audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+                audioManager.isSpeakerphoneOn = false
+            }
+        }
+    }
+
     fun switchAudioMode(mode: AudioMode) {
         currentMode = mode
         
         viewModelScope.launch(Dispatchers.IO) {
-            when (mode) {
-                AudioMode.MEDIA_HIFI -> {
-                    audioManager.mode = AudioManager.MODE_NORMAL
-                    audioManager.isSpeakerphoneOn = true
-                }
-                AudioMode.CALL_SPEAKER -> {
-                    audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
-                    audioManager.isSpeakerphoneOn = true
-                }
-                AudioMode.CALL_EARPIECE -> {
-                    audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
-                    audioManager.isSpeakerphoneOn = false
-                }
-            }
+            applyAudioState(mode)
 
             val localParticipant: LocalParticipant = room.localParticipant
             val trackPub = localParticipant.getTrackPublication(Track.Source.MICROPHONE)
@@ -90,7 +94,7 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
                     LocalAudioTrackOptions(
                         echoCancellation = true,
                         noiseSuppression = true,
-                        autoGainControl = false,
+                        autoGainControl = true,
                         highPassFilter = true,
                         typingNoiseDetection = true
                     )
@@ -109,22 +113,10 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
             val newTrack = localParticipant.createAudioTrack("microphone", options = newAudioOptions)
             localParticipant.publishAudioTrack(newTrack)
             
+            // 启动一个守护任务，在接下来几秒内不断确认模式，防止系统自动跳回
             launch {
-                repeat(3) {
-                    when (mode) {
-                        AudioMode.MEDIA_HIFI -> {
-                            audioManager.mode = AudioManager.MODE_NORMAL
-                            audioManager.isSpeakerphoneOn = true
-                        }
-                        AudioMode.CALL_SPEAKER -> {
-                            audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
-                            audioManager.isSpeakerphoneOn = true
-                        }
-                        AudioMode.CALL_EARPIECE -> {
-                            audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
-                            audioManager.isSpeakerphoneOn = false
-                        }
-                    }
+                repeat(10) {
+                    applyAudioState(mode)
                     delay(500)
                 }
             }
