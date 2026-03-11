@@ -109,10 +109,10 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
             val audioOptions = if (mode == AudioMode.MEDIA_HIFI) {
                 LocalAudioTrackOptions(
                     echoCancellation = true,
-                    noiseSuppression = true,
+                    noiseSuppression = false,
                     autoGainControl = false,
-                    highPassFilter = true,
-                    typingNoiseDetection = true
+                    highPassFilter = false,
+                    typingNoiseDetection = false
                 )
             } else {
                 LocalAudioTrackOptions(
