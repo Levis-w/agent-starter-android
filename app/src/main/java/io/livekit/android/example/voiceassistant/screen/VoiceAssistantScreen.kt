@@ -62,6 +62,7 @@ import io.livekit.android.example.voiceassistant.ui.ChatBar
 import io.livekit.android.example.voiceassistant.ui.ChatLog
 import io.livekit.android.example.voiceassistant.ui.ControlBar
 import io.livekit.android.example.voiceassistant.viewmodel.VoiceAssistantViewModel
+import io.livekit.android.example.voiceassistant.viewmodel.AudioMode
 import io.livekit.android.room.track.screencapture.ScreenCaptureParams
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -153,7 +154,7 @@ fun VoiceAssistant(
                 // 【初始猛踹】等待首次开启完成后，立即执行一次“重置切换”
                 // 这样一进房间就是高清媒体模式
                 kotlinx.coroutines.delay(600)
-                viewModel.switchAudioMode(viewModel.isHiFiMode)
+                viewModel.switchAudioMode(AudioMode.MEDIA_HIFI)
             }
         }
 
@@ -247,10 +248,8 @@ fun VoiceAssistant(
                 isChatEnabled = chatVisible,
                 onChatClick = { chatVisible = !chatVisible },
                 onExitClick = onEndCall,
-                isHiFiMode = viewModel.isHiFiMode,
-                onAudioModeChange = { isHiFi: Boolean ->
-                    viewModel.switchAudioMode(isHiFi) 
-                },
+                currentMode = viewModel.currentMode,
+                onAudioModeChange = { mode -> viewModel.switchAudioMode(mode) },
                 modifier = Modifier.layoutId(LAYOUT_ID_CONTROL_BAR)
             )
 
