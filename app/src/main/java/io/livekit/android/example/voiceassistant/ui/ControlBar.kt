@@ -1,5 +1,5 @@
 package io.livekit.android.example.voiceassistant.ui
-
+import androidx.compose.material3.IconButton
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -112,15 +112,14 @@ fun ControlBar(
             
             Spacer(Modifier.size(8.dp))
             
-            if (isMicEnabled && localAudioTrack != null) {
-                AudioBarVisualizer(
-                    track = localAudioTrack,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(16.dp),
-                    color = SolidColor(MaterialTheme.colorScheme.primary),
-                    barCount = 4
-                )
+              if (isMicEnabled && localAudioTrack != null) {
+                  AudioBarVisualizer(
+                      audioTrackRef = localAudioTrack,
+                      modifier = Modifier
+                          .fillMaxWidth()
+                          .height(16.dp),
+                      barCount = 4
+                 )
             } else {
                 Spacer(Modifier.weight(1f))
             }
