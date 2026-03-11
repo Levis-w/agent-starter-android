@@ -15,7 +15,6 @@ import io.livekit.android.AudioOptions
 import io.livekit.android.AudioType
 import io.livekit.android.LiveKit
 import io.livekit.android.LiveKitOverrides
-import io.livekit.android.RoomOptions
 import io.livekit.android.audio.NoAudioHandler
 import io.livekit.android.example.voiceassistant.screen.VoiceAssistantRoute
 import io.livekit.android.room.Room
@@ -29,36 +28,145 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+/**
+ * 三种音频模式
+ */
+enum class AudioMode {
+    MEDIA_HIFI,      // 媒体通道 + WebRTC 软件 AEC（默认）
+    CALL_SPEAKER,    // 通话模式 + 扬声器 + 硬件 AEC
+    CALL_EARPIECE    // 通话模式 + 听筒 + 硬件 AEC
+}
+
 class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedStateHandle) : AndroidViewModel(application) {
     
     private val audioManager = application.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-    var isHiFiMode by mutableStateOf(true)
+    var currentMode by mutableStateOf(AudioMode.MEDIA_HIFI)
     
-    // ✅ 【2.23.5 终极配置】
+    // ✅ 【三种模式配置】
     val room: Room = LiveKit.create(
         appContext = application,
         overrides = LiveKitOverrides(
             audioOptions = AudioOptions(
-                audioOutputType = AudioType.MediaAudioType(), // 1. 强制输出走媒体通道
-                audioHandler = NoAudioHandler(),     // 2. 彻底禁用 SDK 的自动切换
-                disableCommunicationModeWorkaround = true, // 3. 禁用 6秒自动切回
-                // 4. 【核心黑科技】强行修改硬件音源，安卓系统会彻底认为这不是电话
+                // 默认媒体通道模式
+                audioOutputType = AudioType.MediaAudioType(),
+                audioHandler = NoAudioHandler(),
+                disableCommunicationModeWorkaround = true,
+                // 关闭硬件 AEC/NS，使用 WebRTC 软件 AEC
                 javaAudioDeviceModuleCustomizer = { builder ->
                     builder
-                        .setAudioSource(MediaRecorder.AudioSource.MIC)
+                        .setAudioSource(MediaRecorder.AudioSource.VOICE_COMMUNICATION)
                         .setUseHardwareAcousticEchoCanceler(false)
-                        .setUseHardwareNoiseSuppressor(false) 
+                        .setUseHardwareNoiseSuppressor(false)
                 }
             )
         )
     )
 
-    fun switchAudioMode(switchToHiFi: Boolean) {
-        isHiFiMode = switchToHiFi
+    /**
+     * 切换到指定音频模式
+     */
+    fun switchAudioMode(mode: AudioMode) {
+        currentMode = mode
         
         viewModelScope.launch(Dispatchers.IO) {
-            // 1. 设置系统路由
-            if (switchToHiFi) {
+            when (mode) {
+                AudioMode.MEDIA_HIFI -> {
+                    // 媒体通道模式 - WebRTC 软件 AEC
+                    audioManager.mode = AudioManager.MODE_NORMAL
+                    audioManager.isSpeakerphoneOn = true
+                }
+                AudioMode.CALL_SPEAKER -> {
+                    // 通话模式 - 扬声器 - 硬件 AEC
+                    audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+                    audioManager.isSpeakerphoneOn = true
+                }
+                AudioMode.CALL_EARPIECE -> {
+                    // 通话模式 - 听筒 - 硬件 AEC
+                    audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+                    audioManager.isSpeakerphoneOn = false
+                }
+            }
+
+            // 1. 停止并取消发布旧轨道
+            val localParticipant: LocalParticipant = room.localParticipant
+            val trackPub = localParticipant.getTrackPublication(Track.Source.MICROPHONE)
+            val oldTrack = trackPub?.track as? LocalAudioTrack
+            
+            if (oldTrack != null) {
+                localParticipant.unpublishTrack(oldTrack)
+                oldTrack.stop()
+            }
+            
+            // 2. 关键等待：给系统足够的时间去重置底层硬件 Session
+            delay(500) 
+
+            // 3. 根据模式配置轨道参数
+            val newAudioOptions = when (mode) {
+                AudioMode.MEDIA_HIFI -> {
+                    // 媒体模式：开启 WebRTC 软件 AEC/NS，关闭 AGC
+                    LocalAudioTrackOptions(
+                        echoCancellation = true,
+                        noiseSuppression = true,
+                        autoGainControl = false,
+                        highPassFilter = true,
+                        typingNoiseDetection = true
+                    )
+                }
+                AudioMode.CALL_SPEAKER, AudioMode.CALL_EARPIECE -> {
+                    // 通话模式：使用硬件 AEC（SDK 默认），关闭软件处理
+                    LocalAudioTrackOptions(
+                        echoCancellation = false,
+                        noiseSuppression = false,
+                        autoGainControl = false,
+                        highPassFilter = false,
+                        typingNoiseDetection = false
+                    )
+                }
+            }
+            
+            // 4. 重新发布新轨道
+            val newTrack = localParticipant.createAudioTrack("microphone", options = newAudioOptions)
+            localParticipant.publishAudioTrack(newTrack)
+            
+            // 5. 二次强制补刀，每 500ms 改一次，连改 3 次，彻底压制
+            launch {
+                repeat(3) {
+                    when (mode) {
+                        AudioMode.MEDIA_HIFI -> {
+                            audioManager.mode = AudioManager.MODE_NORMAL
+                            audioManager.isSpeakerphoneOn = true
+                        }
+                        AudioMode.CALL_SPEAKER -> {
+                            audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+                            audioManager.isSpeakerphoneOn = true
+                        }
+                        AudioMode.CALL_EARPIECE -> {
+                            audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+                            audioManager.isSpeakerphoneOn = false
+                        }
+                    }
+                    delay(500)
+                }
+            }
+        }
+    }
+    
+    val tokenSource: TokenSource
+    init {
+        val (sandboxId, url, token) = savedStateHandle.toRoute<VoiceAssistantRoute>()
+        tokenSource = if (sandboxId.isNotEmpty()) {
+            TokenSource.fromSandboxTokenServer(sandboxId = sandboxId).cached()
+        } else {
+            TokenSource.fromLiteral(url, token).cached()
+        }
+    }
+    
+    override fun onCleared() {
+        super.onCleared()
+        room.disconnect()
+        room.release()
+    }
+}
                 audioManager.mode = AudioManager.MODE_NORMAL
                 audioManager.isSpeakerphoneOn = true
             } else {
