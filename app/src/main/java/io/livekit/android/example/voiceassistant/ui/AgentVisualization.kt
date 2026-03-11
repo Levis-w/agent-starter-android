@@ -40,7 +40,7 @@ val hideSpringSpec = spring<Float>(stiffness = Spring.StiffnessMedium)
 fun AgentVisualization(
     agent: Agent,
     modifier: Modifier = Modifier,
-    isConnected: Boolean = true
+    isConnected: Boolean = false
 ) {
 
     val videoTrack = agent.videoTrack
@@ -48,10 +48,10 @@ fun AgentVisualization(
 
     var hasFirstFrameRendered by remember(videoTrack) { mutableStateOf(false) }
 
-    // 逻辑修正：只有当真正获取到音轨或视频帧时，才执行“消失圆球显示内容”的展开动作
-    // 这样能保证在切换房间的空窗期，用户看到的是“圆球”状态而非“消失不见”
-    val revealed = remember(videoTrack, audioTrack, hasFirstFrameRendered, isConnected) {
-        (videoTrack != null && hasFirstFrameRendered) || (videoTrack == null && audioTrack != null)
+    // 回归逻辑：只要房间连上 (isConnected)，圆球就应该消失（展开动画）
+    // 如果有视频，则额外等待首帧渲染以避免闪烁
+    val revealed = remember(isConnected, videoTrack, hasFirstFrameRendered) {
+        isConnected && (videoTrack == null || hasFirstFrameRendered)
     }
 
     Box(modifier = modifier) {
@@ -60,8 +60,7 @@ fun AgentVisualization(
                 trackReference = videoTrack,
                 scaleType = ScaleType.FitInside,
                 onFirstFrameRendered = { hasFirstFrameRendered = true },
-                modifier = Modifier
-                    .fillMaxSize(),
+                modifier = Modifier.fillMaxSize(),
             )
         }
         CircleReveal(
@@ -90,7 +89,8 @@ fun AgentVisualization(
                         }
                     }
 
-                    // 核心修复：使用 agent 作为 key，确保重连后整个可视化器重新绑定到新房间的 Agent 对象
+                    // 核心修复：使用 agent 作为 key，确保重连房间后
+                    // 官方可视化组件能彻底重置其内部的音频处理器，重新捕获新房间的音频流引用
                     androidx.compose.runtime.key(agent) {
                         VoiceAssistantBarVisualizer(
                             agentState = agent.agentState,
