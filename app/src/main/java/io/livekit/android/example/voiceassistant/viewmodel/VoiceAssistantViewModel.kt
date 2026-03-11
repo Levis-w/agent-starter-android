@@ -22,8 +22,6 @@ import io.livekit.android.room.participant.LocalParticipant
 import io.livekit.android.room.track.LocalAudioTrack
 import io.livekit.android.room.track.LocalAudioTrackOptions
 import io.livekit.android.room.track.Track
-import io.livekit.android.token.TokenSource
-import io.livekit.android.token.cached
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -39,6 +37,10 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
     private val audioManager = application.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     var currentMode by mutableStateOf(AudioMode.MEDIA_HIFI)
     
+    // 保存初始连接信息用于重连
+    private val connectionUrl: String
+    private val connectionToken: String
+
     var room: Room by mutableStateOf(createRoomInstance(AudioMode.MEDIA_HIFI))
         private set
 
@@ -90,14 +92,9 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
         currentMode = mode
         
         viewModelScope.launch {
-            val response = when (val source = tokenSource) {
-                is FixedTokenSource -> source.fetch().getOrThrow()
-                is ConfigurableTokenSource -> source.fetch().getOrThrow()
-                else -> throw IllegalStateException("Unknown TokenSource type")
-            }
-            
-            val token = response.participantToken
-            val url = response.serverUrl
+            // 直接使用保存的凭证，不再调用任何 TokenSource 接口
+            val token = connectionToken
+            val url = connectionUrl
             
             val oldRoom = room
             oldRoom.disconnect()
@@ -139,15 +136,19 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
         }
     }
     
-    val tokenSource: TokenSource
     init {
         val (sandboxId, url, token) = savedStateHandle.toRoute<VoiceAssistantRoute>()
-        tokenSource = if (sandboxId.isNotEmpty()) {
-            TokenSource.fromSandboxTokenServer(sandboxId = sandboxId).cached()
-        } else {
-            TokenSource.fromLiteral(url, token).cached()
-        }
+        // 记录连接信息
+        connectionUrl = url
+        connectionToken = token
     }
+    
+    override fun onCleared() {
+        super.onCleared()
+        room.disconnect()
+        room.release()
+    }
+}
     
     override fun onCleared() {
         super.onCleared()
