@@ -102,19 +102,18 @@ fun VoiceAssistant(
     val canEnableMic by rememberCanEnableMic()
     val canEnableVideo by rememberCanEnableCamera()
 
-    val session = rememberSession(
-        tokenSource = viewModel.tokenSource,
-        options = SessionOptions(
-            room = viewModel.room
-        )
-    )
-
-
     val context = LocalContext.current
     
-    // 关键修复：使用 key(room) 强制在房间实例变化时重置整个会话状态
+    // 关键修复：使用 key(room) 强制在房间实例变化时重置整个会话状态，保证每个房间的 Session 都是隔离并最新初始化的
     androidx.compose.runtime.key(viewModel.room) {
+        val session = rememberSession(
+            tokenSource = viewModel.tokenSource,
+            options = SessionOptions(
+                room = viewModel.room
+            )
+        )
         SessionScope(session = session) { session ->
+            // ... (rest of the block)
 
             // Start the session when we have at least microphone permissions.
             // Permission removals kill the app, so this is a one-way transition.
@@ -219,8 +218,17 @@ fun VoiceAssistant(
 
                 // Amplitude visualization of the Assistant's voice track.
                 val agentBorderAlpha by animateFloatAsState(if (chatVisible) 1f else 0f, label = "agentBorderAlpha")
+                
+                // 关键逻辑：追踪连接状态以便通知可视化器启动1秒显示计时
+                var isConnected by remember { mutableStateOf(false) }
+                LaunchedEffect(session) {
+                    session.waitUntilConnected()
+                    isConnected = true
+                }
+
                 AgentVisualization(
                     agent = agent,
+                    isConnected = isConnected,
                     modifier = Modifier
                         .layoutId(LAYOUT_ID_AGENT)
                         .clip(RoundedCornerShape(8.dp))
