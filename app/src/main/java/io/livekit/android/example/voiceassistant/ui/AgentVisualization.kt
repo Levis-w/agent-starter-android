@@ -62,7 +62,7 @@ fun AgentVisualization(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background)
+                        
                 ) {
                     val density = LocalDensity.current
                     var width by remember { mutableIntStateOf(0) }
