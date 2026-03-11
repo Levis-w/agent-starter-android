@@ -92,45 +92,15 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
         if (currentMode == mode) return
         currentMode = mode
         
-        viewModelScope.launch {
-            val oldRoom = room
-            oldRoom.disconnect()
-            oldRoom.release()
-            
-            applyAudioState(mode)
-            
-            val newRoom = createRoomInstance(mode)
-            room = newRoom
-            
-            // 模式切换时的手动连接
-            newRoom.connect(connectionUrl, connectionToken)
-            
-            val localParticipant = newRoom.localParticipant
-            val audioOptions = if (mode == AudioMode.MEDIA_HIFI) {
-                LocalAudioTrackOptions(
-                    echoCancellation = true,
-                    noiseSuppression = false,
-                    autoGainControl = false,
-                    highPassFilter = false,
-                    typingNoiseDetection = false
-                )
-            } else {
-                LocalAudioTrackOptions(
-                    echoCancellation = false,
-                    noiseSuppression = false,
-                    autoGainControl = false,
-                    highPassFilter = false,
-                    typingNoiseDetection = false
-                )
-            }
-            val track = localParticipant.createAudioTrack("microphone", options = audioOptions)
-            localParticipant.publishAudioTrack(track)
+        // 核心：只更新 room 实例并应用物理状态
+        applyAudioState(mode)
+        room = createRoomInstance(mode)
 
-            launch {
-                repeat(10) {
-                    applyAudioState(mode)
-                    delay(500)
-                }
+        // 守护任务：持续确认物理状态（防止系统自动重置）
+        viewModelScope.launch {
+            repeat(10) {
+                applyAudioState(mode)
+                delay(500)
             }
         }
     }
