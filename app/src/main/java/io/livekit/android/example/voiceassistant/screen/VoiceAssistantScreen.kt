@@ -216,27 +216,11 @@ fun VoiceAssistant(
                 )
 
                 // Amplitude visualization of the Assistant's voice track.
-                val agentBorderAlpha by animateFloatAsState(if (chatVisible) 1f else 0f, label = "agentBorderAlpha")
-                
-                // 关键逻辑：追踪连接状态并同步至 AgentVisualization，确保 1s 动画逻辑在重连后重置
-                var isConnected by remember { mutableStateOf(false) }
-                LaunchedEffect(session) {
-                    isConnected = false // 重置状态
-                    try {
-                        session.waitUntilConnected()
-                        isConnected = true
-                    } catch (e: Exception) {
-                        // 如果连接失败，保持 false
-                    }
-                }
-
                 AgentVisualization(
                     agent = agent,
-                    isConnected = isConnected,
                     modifier = Modifier
                         .layoutId(LAYOUT_ID_AGENT)
                         .clip(RoundedCornerShape(8.dp))
-                        .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = agentBorderAlpha), RoundedCornerShape(8.dp))
                 )
 
                 val context = LocalContext.current
