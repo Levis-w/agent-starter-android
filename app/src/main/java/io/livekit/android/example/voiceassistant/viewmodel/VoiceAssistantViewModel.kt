@@ -43,14 +43,13 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
         appContext = application,
         overrides = LiveKitOverrides(
             audioOptions = AudioOptions(
-                audioOutputType = AudioType.MediaAudioType(),
+                audioOutputType = AudioType.CallAudioType(),
                 audioHandler = NoAudioHandler(),
-                disableCommunicationModeWorkaround = true,
                 javaAudioDeviceModuleCustomizer = { builder ->
                     builder
                         .setAudioSource(MediaRecorder.AudioSource.VOICE_COMMUNICATION)
-                        .setUseHardwareAcousticEchoCanceler(false)
-                        .setUseHardwareNoiseSuppressor(false)
+                        .setUseHardwareAcousticEchoCanceler(true)
+                        .setUseHardwareNoiseSuppressor(true)
                 }
             )
         )
