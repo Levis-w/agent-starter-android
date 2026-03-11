@@ -92,6 +92,13 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
         if (currentMode == mode) return
         currentMode = mode
         
+        // 核心：清理旧房间资源并置换实例，确保切换后音频律动动画由于轨道变化能正常重新订阅
+        val oldRoom = room
+        viewModelScope.launch(Dispatchers.IO) {
+            oldRoom.disconnect()
+            oldRoom.release()
+        }
+
         // 核心：只更新 room 实例并应用物理状态
         applyAudioState(mode)
         room = createRoomInstance(mode)
