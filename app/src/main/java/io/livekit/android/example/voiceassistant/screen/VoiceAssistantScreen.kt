@@ -113,7 +113,6 @@ fun VoiceAssistant(
             )
         )
         SessionScope(session = session) { session ->
-            // ... (rest of the block)
 
             // Start the session when we have at least microphone permissions.
             // Permission removals kill the app, so this is a one-way transition.
@@ -219,11 +218,16 @@ fun VoiceAssistant(
                 // Amplitude visualization of the Assistant's voice track.
                 val agentBorderAlpha by animateFloatAsState(if (chatVisible) 1f else 0f, label = "agentBorderAlpha")
                 
-                // 关键逻辑：追踪连接状态以便通知可视化器启动1秒显示计时
+                // 关键逻辑：追踪连接状态并同步至 AgentVisualization，确保 1s 动画逻辑在重连后重置
                 var isConnected by remember { mutableStateOf(false) }
                 LaunchedEffect(session) {
-                    session.waitUntilConnected()
-                    isConnected = true
+                    isConnected = false // 重置状态
+                    try {
+                        session.waitUntilConnected()
+                        isConnected = true
+                    } catch (e: Exception) {
+                        // 如果连接失败，保持 false
+                    }
                 }
 
                 AgentVisualization(
