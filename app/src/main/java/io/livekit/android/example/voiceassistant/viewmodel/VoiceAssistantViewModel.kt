@@ -92,7 +92,6 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
         currentMode = mode
         
         viewModelScope.launch {
-            // 直接使用保存的凭证，不再调用任何 TokenSource 接口
             val token = connectionToken
             val url = connectionUrl
             
@@ -138,17 +137,9 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
     
     init {
         val (sandboxId, url, token) = savedStateHandle.toRoute<VoiceAssistantRoute>()
-        // 记录连接信息
         connectionUrl = url
         connectionToken = token
     }
-    
-    override fun onCleared() {
-        super.onCleared()
-        room.disconnect()
-        room.release()
-    }
-}
     
     override fun onCleared() {
         super.onCleared()
