@@ -24,6 +24,10 @@ import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.VideocamOff
 import androidx.compose.material.icons.outlined.PresentToAll
+import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.PhoneEnabled
+import androidx.compose.material.icons.filled.SettingsVoice
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -138,9 +142,9 @@ fun ControlBar(
                     .padding(horizontal = 8.dp)
             ) {
                 val modeIcon = when (currentMode) {
-                    AudioMode.MEDIA_HIFI -> Icons.Default.Videocam
-                    AudioMode.CALL_SPEAKER -> Icons.Default.Mic
-                    AudioMode.CALL_EARPIECE -> Icons.Default.MicOff
+                    AudioMode.MEDIA_HIFI -> Icons.Default.MusicNote
+                    AudioMode.CALL_SPEAKER -> Icons.Default.VolumeUp
+                    AudioMode.CALL_EARPIECE -> Icons.Default.PhoneEnabled
                 }
                 Icon(
                     modeIcon,
@@ -159,33 +163,33 @@ fun ControlBar(
                 onDismissRequest = { audioModeMenuExpanded = false }
             ) {
                 DropdownMenuItem(
-                    text = { Text("媒体模式 (高保真)") },
+                    text = { Text("音乐模式 (软件AEC)") },
                     onClick = {
                         onAudioModeChange(AudioMode.MEDIA_HIFI)
                         audioModeMenuExpanded = false
                     },
                     leadingIcon = {
-                        Icon(Icons.Default.Videocam, null)
+                        Icon(Icons.Default.MusicNote, null)
                     }
                 )
                 DropdownMenuItem(
-                    text = { Text("通话模式 (扬声器)") },
+                    text = { Text("扬声器 (硬件AEC)") },
                     onClick = {
                         onAudioModeChange(AudioMode.CALL_SPEAKER)
                         audioModeMenuExpanded = false
                     },
                     leadingIcon = {
-                        Icon(Icons.Default.Mic, null)
+                        Icon(Icons.Default.VolumeUp, null)
                     }
                 )
                 DropdownMenuItem(
-                    text = { Text("通话模式 (听筒)") },
+                    text = { Text("听筒 (硬件AEC)") },
                     onClick = {
                         onAudioModeChange(AudioMode.CALL_EARPIECE)
                         audioModeMenuExpanded = false
                     },
                     leadingIcon = {
-                        Icon(Icons.Default.MicOff, null)
+                        Icon(Icons.Default.PhoneEnabled, null)
                     }
                 )
             }
