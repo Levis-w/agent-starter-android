@@ -47,9 +47,9 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
                 audioHandler = NoAudioHandler(),
                 javaAudioDeviceModuleCustomizer = { builder ->
                     builder
-                        .setAudioSource(MediaRecorder.AudioSource.VOICE_COMMUNICATION)
-                        .setUseHardwareAcousticEchoCanceler(true)
-                        .setUseHardwareNoiseSuppressor(true)
+                        .setAudioSource(MediaRecorder.AudioSource.MIC)
+                        .setUseHardwareAcousticEchoCanceler(false)
+                        .setUseHardwareNoiseSuppressor(false)
                 }
             )
         )
@@ -89,31 +89,18 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
             
             delay(500) 
 
-            val newAudioOptions = when (mode) {
-                AudioMode.MEDIA_HIFI -> {
-                    LocalAudioTrackOptions(
-                        echoCancellation = true,
-                        noiseSuppression = true,
-                        autoGainControl = true,
-                        highPassFilter = true,
-                        typingNoiseDetection = true
-                    )
-                }
-                AudioMode.CALL_SPEAKER, AudioMode.CALL_EARPIECE -> {
-                    LocalAudioTrackOptions(
-                        echoCancellation = false,
-                        noiseSuppression = false,
-                        autoGainControl = false,
-                        highPassFilter = false,
-                        typingNoiseDetection = false
-                    )
-                }
-            }
+            // 核心：所有模式统一强制开启软件 AEC
+            val newAudioOptions = LocalAudioTrackOptions(
+                echoCancellation = true,
+                noiseSuppression = true,
+                autoGainControl = true,
+                highPassFilter = true,
+                typingNoiseDetection = true
+            )
             
             val newTrack = localParticipant.createAudioTrack("microphone", options = newAudioOptions)
             localParticipant.publishAudioTrack(newTrack)
             
-            // 启动一个守护任务，在接下来几秒内不断确认模式，防止系统自动跳回
             launch {
                 repeat(10) {
                     applyAudioState(mode)
