@@ -37,9 +37,10 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
     private val audioManager = application.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     var currentMode by mutableStateOf(AudioMode.MEDIA_HIFI)
     
-    // 保存初始连接信息用于重连
-    private val connectionUrl: String
-    private val connectionToken: String
+    // 显式引用 SDK 的 TokenSource 避免冲突
+    lateinit var tokenSource: io.livekit.android.token.TokenSource
+    private var connectionUrl: String = ""
+    private var connectionToken: String = ""
 
     var room: Room by mutableStateOf(createRoomInstance(AudioMode.MEDIA_HIFI))
         private set
@@ -92,9 +93,6 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
         currentMode = mode
         
         viewModelScope.launch {
-            val token = connectionToken
-            val url = connectionUrl
-            
             val oldRoom = room
             oldRoom.disconnect()
             oldRoom.release()
@@ -103,7 +101,9 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
             
             val newRoom = createRoomInstance(mode)
             room = newRoom
-            newRoom.connect(url, token)
+            
+            // 模式切换时的手动连接
+            newRoom.connect(connectionUrl, connectionToken)
             
             val localParticipant = newRoom.localParticipant
             val audioOptions = if (mode == AudioMode.MEDIA_HIFI) {
@@ -139,6 +139,13 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
         val (sandboxId, url, token) = savedStateHandle.toRoute<VoiceAssistantRoute>()
         connectionUrl = url
         connectionToken = token
+        
+        // 初始化 SDK 格式的 TokenSource
+        tokenSource = if (sandboxId.isNotEmpty()) {
+            io.livekit.android.token.TokenSource.fromSandboxTokenServer(sandboxId)
+        } else {
+            io.livekit.android.token.TokenSource.fromLiteral(url, token)
+        }
     }
     
     override fun onCleared() {
