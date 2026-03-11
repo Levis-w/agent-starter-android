@@ -112,7 +112,7 @@ fun VoiceAssistant(
     val context = LocalContext.current
 
     // 关键修复：使用 key(room) 强制在房间实例变化时重置整个会话状态
-    // 这样 rememberSessionMessages 就会重新绑定到新房间，文字就不会丢了
+    // 这样 rememberSessionMessages 就会重新绑定到新房间，文字和动画就不会丢了
     androidx.compose.runtime.key(viewModel.room) {
         SessionScope(session = session) { session ->
 
@@ -150,10 +150,10 @@ fun VoiceAssistant(
 
             LaunchedEffect(canEnableMic, requestedAudio) {
                 session.waitUntilConnected()
-
+                
                 // 手动发布音轨以控制 AEC
                 val localParticipant = room.localParticipant
-
+                
                 if (canEnableMic && requestedAudio) {
                     val audioOptions = if (viewModel.currentMode == AudioMode.MEDIA_HIFI) {
                         io.livekit.android.room.track.LocalAudioTrackOptions(
@@ -176,6 +176,7 @@ fun VoiceAssistant(
                     localParticipant.publishAudioTrack(track)
                 }
             }
+
             LaunchedEffect(canEnableVideo, requestedVideo) {
                 session.waitUntilConnected()
                 localMedia.setCameraEnabled(canEnableVideo && requestedVideo)
@@ -217,13 +218,11 @@ fun VoiceAssistant(
                 )
 
                 // Amplitude visualization of the Assistant's voice track.
-                val agentBorderAlpha by animateFloatAsState(if (chatVisible) 1f else 0f, label = "agentBorderAlpha")
                 AgentVisualization(
                     agent = agent,
                     modifier = Modifier
                         .layoutId(LAYOUT_ID_AGENT)
                         .clip(RoundedCornerShape(8.dp))
-                        .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = agentBorderAlpha), RoundedCornerShape(8.dp))
                 )
 
                 val context = LocalContext.current
