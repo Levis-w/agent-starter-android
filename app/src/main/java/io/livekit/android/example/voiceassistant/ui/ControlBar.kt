@@ -27,7 +27,6 @@ import androidx.compose.material.icons.outlined.PresentToAll
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -41,10 +40,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import io.livekit.android.annotations.Beta
 import io.livekit.android.compose.types.TrackReference
 import io.livekit.android.compose.ui.audio.AudioBarVisualizer
+import io.livekit.android.example.voiceassistant.viewmodel.AudioMode
 
 private val buttonModifier = Modifier
     .width(40.dp)
@@ -74,8 +73,8 @@ fun ControlBar(
     isChatEnabled: Boolean,
     onChatClick: () -> Unit,
     onExitClick: () -> Unit,
-    isHiFiMode: Boolean = true,
-    onAudioModeChange: (Boolean) -> Unit, 
+    currentMode: AudioMode = AudioMode.MEDIA_HIFI,
+    onAudioModeChange: (AudioMode) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var audioModeMenuExpanded by remember { mutableStateOf(false) }
@@ -104,19 +103,25 @@ fun ControlBar(
             } else {
                 Icons.Default.MicOff
             }
-            Icon(micIcon, "Toggle Microphone")
+            Icon(
+                micIcon,
+                "Toggle Microphone",
+                modifier = Modifier.size(20.dp)
+            )
             
-            AnimatedVisibility(isMicEnabled) {
+            Spacer(Modifier.size(8.dp))
+            
+            if (isMicEnabled && localAudioTrack != null) {
                 AudioBarVisualizer(
-                    audioTrackRef = localAudioTrack,
-                    brush = SolidColor(MaterialTheme.colorScheme.onBackground),
-                    barCount = 3,
-                    barWidth = 2.dp,
-                    minHeight = 0.2f,
+                    track = localAudioTrack,
                     modifier = Modifier
-                        .width(12.dp)
-                        .height(20.dp)
+                        .fillMaxWidth()
+                        .height(16.dp),
+                    color = SolidColor(MaterialTheme.colorScheme.primary),
+                    barCount = 4
                 )
+            } else {
+                Spacer(Modifier.weight(1f))
             }
             
             Spacer(Modifier.size(8.dp))
@@ -132,10 +137,10 @@ fun ControlBar(
                     .background(MaterialTheme.colorScheme.surface)
                     .padding(horizontal = 8.dp)
             ) {
-                val modeIcon = if (isHiFiMode) {
-                    Icons.Default.Videocam
-                } else {
-                    Icons.Default.Mic
+                val modeIcon = when (currentMode) {
+                    AudioMode.MEDIA_HIFI -> Icons.Default.Videocam
+                    AudioMode.CALL_SPEAKER -> Icons.Default.Mic
+                    AudioMode.CALL_EARPIECE -> Icons.Default.MicOff
                 }
                 Icon(
                     modeIcon,
@@ -156,7 +161,7 @@ fun ControlBar(
                 DropdownMenuItem(
                     text = { Text("媒体模式 (高保真)") },
                     onClick = {
-                        onAudioModeChange(true)
+                        onAudioModeChange(AudioMode.MEDIA_HIFI)
                         audioModeMenuExpanded = false
                     },
                     leadingIcon = {
@@ -164,13 +169,23 @@ fun ControlBar(
                     }
                 )
                 DropdownMenuItem(
-                    text = { Text("电话模式 (通话)") },
+                    text = { Text("通话模式 (扬声器)") },
                     onClick = {
-                        onAudioModeChange(false)
+                        onAudioModeChange(AudioMode.CALL_SPEAKER)
                         audioModeMenuExpanded = false
                     },
                     leadingIcon = {
                         Icon(Icons.Default.Mic, null)
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("通话模式 (听筒)") },
+                    onClick = {
+                        onAudioModeChange(AudioMode.CALL_EARPIECE)
+                        audioModeMenuExpanded = false
+                    },
+                    leadingIcon = {
+                        Icon(Icons.Default.MicOff, null)
                     }
                 )
             }
@@ -178,50 +193,74 @@ fun ControlBar(
         
         Spacer(Modifier.size(8.dp))
         
-        val cameraIcon = if (isCameraEnabled) {
-            Icons.Default.Videocam
-        } else {
-            Icons.Default.VideocamOff
-        }
         IconButton(
             onClick = onCameraClick,
             modifier = Modifier
-                .weight(1f)
-                .height(40.dp)
+                .height(48.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.surface)
                 .enabledButtonModifier(isCameraEnabled)
         ) {
-            Icon(cameraIcon, "Toggle Camera")
+            val cameraIcon = if (isCameraEnabled) {
+                Icons.Default.Videocam
+            } else {
+                Icons.Default.VideocamOff
+            }
+            Icon(
+                cameraIcon,
+                "Toggle Camera",
+                modifier = Modifier.size(20.dp)
+            )
         }
         
         Spacer(Modifier.size(8.dp))
         
         IconButton(
             onClick = onScreenShareClick,
-            modifier = buttonModifier
-                .weight(1f)
-                .enabledButtonModifier(isScreenShareEnabled)
+            modifier = Modifier
+                .height(48.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.surface)
+                .enabledButtonModifier(!isScreenShareEnabled)
         ) {
-            Icon(Icons.Outlined.PresentToAll, "Toggle Screenshare")
+            Icon(
+                Icons.Outlined.PresentToAll,
+                "Toggle Screen Share",
+                modifier = Modifier.size(20.dp)
+            )
         }
         
         Spacer(Modifier.size(8.dp))
         
         IconButton(
             onClick = onChatClick,
-            modifier = buttonModifier
-                .weight(1f)
-                .enabledButtonModifier(isChatEnabled)
+            modifier = Modifier
+                .height(48.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.surface)
         ) {
-            Icon(Icons.AutoMirrored.Filled.Chat, "Toggle Chat")
+            Icon(
+                Icons.AutoMirrored.Filled.Chat,
+                "Toggle Chat",
+                modifier = Modifier.size(20.dp)
+            )
         }
         
         Spacer(Modifier.size(8.dp))
         
         IconButton(
             onClick = onExitClick,
-            modifier = buttonModifier.weight(1f)
+            modifier = Modifier
+                .height(48.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.error)
         ) {
-            Icon(Icons.Default.CallEnd, "End Call", tint = Color.Red)
+            Icon(
+                Icons.Default.CallEnd,
+                "End Call",
+                modifier = Modifier.size(20.dp),
+                tint = Color.White
+            )
         }
     }
 }
@@ -229,21 +268,20 @@ fun ControlBar(
 @Preview
 @Composable
 fun ControlBarPreview() {
-    ControlBar(
-        isMicEnabled = false,
-        onMicClick = {},
-        localAudioTrack = null,
-        isCameraEnabled = false,
-        onCameraClick = {},
-        isScreenShareEnabled = false,
-        onScreenShareClick = { },
-        isChatEnabled = false,
-        onChatClick = {},
-        onExitClick = {},
-        isHiFiMode = true,
-        onAudioModeChange = {},
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(40.dp),
-    )
+    MaterialTheme {
+        ControlBar(
+            isMicEnabled = true,
+            onMicClick = {},
+            localAudioTrack = null,
+            isCameraEnabled = false,
+            onCameraClick = {},
+            isScreenShareEnabled = false,
+            onScreenShareClick = {},
+            isChatEnabled = false,
+            onChatClick = {},
+            onExitClick = {},
+            currentMode = AudioMode.MEDIA_HIFI,
+            onAudioModeChange = {}
+        )
+    }
 }
