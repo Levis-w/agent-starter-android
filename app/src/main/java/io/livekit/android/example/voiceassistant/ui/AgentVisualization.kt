@@ -16,7 +16,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.onSizeChanged
@@ -63,7 +62,7 @@ fun AgentVisualization(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(androidx.compose.ui.graphics.Color.Transparent)
+                        .background(MaterialTheme.colorScheme.background)
                 ) {
                     val density = LocalDensity.current
                     var width by remember { mutableIntStateOf(0) }
@@ -81,22 +80,26 @@ fun AgentVisualization(
                             return@derivedStateOf max(0f, (widthPx / height))
                         }
                     }
-                    VoiceAssistantBarVisualizer(
-                        agentState = agent.agentState,
-                        audioTrackRef = agent.audioTrack,
-                        barCount = 5,
-                        minHeight = barMinHeightPercent,
-                        barWidth = barWidth,
-                        brush = SolidColor(MaterialTheme.colorScheme.onBackground),
-                        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-                        modifier = Modifier
-                            .fillMaxWidth(0.75f)
-                            .fillMaxHeight(0.22f)
-                            .onSizeChanged { size ->
-                                width = size.width
-                                height = size.height
-                            }
-                    )
+                    
+                    // 关键修复：使用 key(audioTrack) 确保在重连后，可视化器能正确绑定到新音轨
+                    androidx.compose.runtime.key(agent.audioTrack) {
+                        VoiceAssistantBarVisualizer(
+                            agentState = agent.agentState,
+                            audioTrackRef = agent.audioTrack,
+                            barCount = 5,
+                            minHeight = barMinHeightPercent,
+                            barWidth = barWidth,
+                            brush = SolidColor(MaterialTheme.colorScheme.onBackground),
+                            animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                            modifier = Modifier
+                                .fillMaxWidth(0.75f)
+                                .fillMaxHeight(0.22f)
+                                .onSizeChanged { size ->
+                                    width = size.width
+                                    height = size.height
+                                }
+                        )
+                    }
                 }
             },
             modifier = Modifier.fillMaxSize(),
