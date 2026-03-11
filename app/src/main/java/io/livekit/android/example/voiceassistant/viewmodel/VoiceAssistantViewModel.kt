@@ -90,7 +90,14 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
         currentMode = mode
         
         viewModelScope.launch {
-            val token = tokenSource.getToken()
+            val response = when (val source = tokenSource) {
+                is FixedTokenSource -> source.fetch().getOrThrow()
+                is ConfigurableTokenSource -> source.fetch().getOrThrow()
+                else -> throw IllegalStateException("Unknown TokenSource type")
+            }
+            
+            val token = response.participantToken
+            val url = response.serverUrl
             
             val oldRoom = room
             oldRoom.disconnect()
@@ -100,7 +107,7 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
             
             val newRoom = createRoomInstance(mode)
             room = newRoom
-            newRoom.connect(tokenSource.url, token)
+            newRoom.connect(url, token)
             
             val localParticipant = newRoom.localParticipant
             val audioOptions = if (mode == AudioMode.MEDIA_HIFI) {
