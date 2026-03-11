@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -27,6 +28,7 @@ import io.livekit.android.compose.ui.ScaleType
 import io.livekit.android.compose.ui.VideoTrackView
 import io.livekit.android.compose.ui.audio.VoiceAssistantBarVisualizer
 import io.livekit.android.example.voiceassistant.ui.anim.CircleReveal
+import kotlinx.coroutines.delay
 import kotlin.math.max
 import kotlin.math.roundToInt
 
@@ -37,7 +39,8 @@ val hideSpringSpec = spring<Float>(stiffness = Spring.StiffnessMedium)
 @Composable
 fun AgentVisualization(
     agent: Agent,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isConnected: Boolean = true
 ) {
 
     val videoTrack = agent.videoTrack
@@ -45,9 +48,20 @@ fun AgentVisualization(
 
     var hasFirstFrameRendered by remember(videoTrack) { mutableStateOf(false) }
     
-    // 如果有视频，等第一帧；如果只有音频（语音助手模式），只要音频轨道出现就显示
-    val revealed = remember(videoTrack, audioTrack, hasFirstFrameRendered) {
-        (videoTrack != null && hasFirstFrameRendered) || (videoTrack == null && audioTrack != null)
+    // 关键优化：连上房间后1秒内强制显示，确保即便Agent轨道未就绪也能进入律动状态
+    var timerRevealed by remember { mutableStateOf(false) }
+    LaunchedEffect(isConnected) {
+        if (isConnected) {
+            delay(1000)
+            timerRevealed = true
+        } else {
+            timerRevealed = false
+        }
+    }
+
+    // 如果有视频，等第一帧；如果只有音频（语音助手模式），只要音频轨道出现就显示；或者连接后1秒超时强制显示
+    val revealed = remember(videoTrack, audioTrack, hasFirstFrameRendered, timerRevealed) {
+        timerRevealed || (videoTrack != null && hasFirstFrameRendered) || (videoTrack == null && audioTrack != null)
     }
 
     Box(modifier = modifier) {
