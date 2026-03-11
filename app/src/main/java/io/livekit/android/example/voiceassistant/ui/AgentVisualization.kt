@@ -47,21 +47,11 @@ fun AgentVisualization(
     val audioTrack = agent.audioTrack
 
     var hasFirstFrameRendered by remember(videoTrack) { mutableStateOf(false) }
-    
-    // 关键优化：连上房间后1秒内强制显示，确保即便Agent轨道未就绪也能进入律动状态
-    var timerRevealed by remember { mutableStateOf(false) }
-    LaunchedEffect(isConnected) {
-        if (isConnected) {
-            delay(1000)
-            timerRevealed = true
-        } else {
-            timerRevealed = false
-        }
-    }
 
-    // 如果有视频，等第一帧；如果只有音频（语音助手模式），只要音频轨道出现就显示；或者连接后1秒超时强制显示
-    val revealed = remember(videoTrack, audioTrack, hasFirstFrameRendered, timerRevealed) {
-        timerRevealed || (videoTrack != null && hasFirstFrameRendered) || (videoTrack == null && audioTrack != null)
+    // 逻辑修正：只有当真正获取到音轨或视频帧时，才执行“消失圆球显示内容”的展开动作
+    // 这样能保证在切换房间的空窗期，用户看到的是“圆球”状态而非“消失不见”
+    val revealed = remember(videoTrack, audioTrack, hasFirstFrameRendered, isConnected) {
+        (videoTrack != null && hasFirstFrameRendered) || (videoTrack == null && audioTrack != null)
     }
 
     Box(modifier = modifier) {
@@ -99,9 +89,9 @@ fun AgentVisualization(
                             return@derivedStateOf max(0f, (widthPx / height))
                         }
                     }
-                    
-                    // 关键修复：使用 key(audioTrack) 确保在重连后，可视化器能正确绑定到新音轨
-                    androidx.compose.runtime.key(agent.audioTrack) {
+
+                    // 核心修复：使用 agent 作为 key，确保重连后整个可视化器重新绑定到新房间的 Agent 对象
+                    androidx.compose.runtime.key(agent) {
                         VoiceAssistantBarVisualizer(
                             agentState = agent.agentState,
                             audioTrackRef = agent.audioTrack,
