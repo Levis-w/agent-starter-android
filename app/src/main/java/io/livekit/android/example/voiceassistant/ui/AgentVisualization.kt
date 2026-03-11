@@ -41,9 +41,14 @@ fun AgentVisualization(
 ) {
 
     val videoTrack = agent.videoTrack
+    val audioTrack = agent.audioTrack
 
     var hasFirstFrameRendered by remember(videoTrack) { mutableStateOf(false) }
-    val revealed = videoTrack != null && hasFirstFrameRendered
+    
+    // 如果有视频，等第一帧；如果只有音频（语音助手模式），只要音频轨道出现就显示
+    val revealed = remember(videoTrack, audioTrack, hasFirstFrameRendered) {
+        (videoTrack != null && hasFirstFrameRendered) || (videoTrack == null && audioTrack != null)
+    }
 
     Box(modifier = modifier) {
         if (videoTrack != null) {
