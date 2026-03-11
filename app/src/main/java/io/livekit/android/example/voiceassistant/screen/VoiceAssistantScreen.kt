@@ -150,17 +150,32 @@ fun VoiceAssistant(
 
             LaunchedEffect(canEnableMic, requestedAudio) {
                 session.waitUntilConnected()
-                // 首次开启麦克风
-                localMedia.setMicrophoneEnabled(canEnableMic && requestedAudio)
-                
+
+                // 手动发布音轨以控制 AEC
+                val localParticipant = room.localParticipant
+
                 if (canEnableMic && requestedAudio) {
-                    // 【初始猛踹】等待首次开启完成后，立即执行一次“重置切换”
-                    // 这样一进房间就是高清媒体模式
-                    kotlinx.coroutines.delay(600)
-                    viewModel.switchAudioMode(AudioMode.MEDIA_HIFI)
+                    val audioOptions = if (viewModel.currentMode == AudioMode.MEDIA_HIFI) {
+                        io.livekit.android.room.track.LocalAudioTrackOptions(
+                            echoCancellation = true,
+                            noiseSuppression = true,
+                            autoGainControl = false,
+                            highPassFilter = true,
+                            typingNoiseDetection = true
+                        )
+                    } else {
+                        io.livekit.android.room.track.LocalAudioTrackOptions(
+                            echoCancellation = false, // 硬件处理模式
+                            noiseSuppression = false,
+                            autoGainControl = false,
+                            highPassFilter = false,
+                            typingNoiseDetection = false
+                        )
+                    }
+                    val track = localParticipant.createAudioTrack("microphone", options = audioOptions)
+                    localParticipant.publishAudioTrack(track)
                 }
             }
-
             LaunchedEffect(canEnableVideo, requestedVideo) {
                 session.waitUntilConnected()
                 localMedia.setCameraEnabled(canEnableVideo && requestedVideo)
