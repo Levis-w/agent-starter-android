@@ -45,9 +45,11 @@ fun AgentVisualization(
 
     var hasFirstFrameRendered by remember(videoTrack) { mutableStateOf(false) }
     
-    // 如果有视频，等第一帧；如果只有音频（语音助手模式），只要音频轨道出现就显示
-    val revealed = remember(videoTrack, audioTrack, hasFirstFrameRendered) {
-        (videoTrack != null && hasFirstFrameRendered) || (videoTrack == null && audioTrack != null)
+    // 逻辑修正：CircleReveal 的作用是在视频就绪时，“揭开”遮罩显示视频。
+    // 在纯语音模式下，可视化 Bars 是主体，不应该被 revealed (即隐藏)。
+    // 因此 revealed 状态应仅取决于视频轨道的渲染情况。
+    val revealed = remember(videoTrack, hasFirstFrameRendered) {
+        videoTrack != null && hasFirstFrameRendered
     }
 
     Box(modifier = modifier) {
@@ -86,7 +88,7 @@ fun AgentVisualization(
                         }
                     }
                     
-                    // 关键修复：使用 key(audioTrack) 确保在重连后，可视化器能正确绑定到新音轨
+                    // 关键修复：使用 key(audioTrack) 确保在重连后（房间重建），可视化器能彻底重置并绑定到新音轨
                     androidx.compose.runtime.key(agent.audioTrack) {
                         VoiceAssistantBarVisualizer(
                             agentState = agent.agentState,
