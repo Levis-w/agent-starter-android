@@ -92,7 +92,7 @@ fun VoiceAssistantScreen(
 fun VoiceAssistant(
     viewModel: VoiceAssistantViewModel,
     modifier: Modifier = Modifier,
-    onEndCall: () -> Unit
+    onEndCall: Unit -> Unit
 ) {
     var requestedAudio by remember { mutableStateOf(true) } // Turn on audio by default.
     var requestedVideo by remember { mutableStateOf(false) }
@@ -102,18 +102,18 @@ fun VoiceAssistant(
     val canEnableMic by rememberCanEnableMic()
     val canEnableVideo by rememberCanEnableCamera()
 
-    val session = rememberSession(
-        tokenSource = viewModel.tokenSource,
-        options = SessionOptions(
-            room = viewModel.room
-        )
-    )
-
     val context = LocalContext.current
 
     // 关键修复：使用 key(room) 强制在房间实例变化时重置整个会话状态
-    // 这样 rememberSessionMessages 就会重新绑定到新房间，文字和动画就不会丢了
+    // 让 session, SessionScope, 及其内部的所有 rememberAgent 随房间彻底重连
     androidx.compose.runtime.key(viewModel.room) {
+        val session = rememberSession(
+            tokenSource = viewModel.tokenSource,
+            options = SessionOptions(
+                room = viewModel.room
+            )
+        )
+
         SessionScope(session = session) { session ->
 
             // Start the session when we have at least microphone permissions.
@@ -128,7 +128,7 @@ fun VoiceAssistant(
                 // Handle if the session fails to connect.
                 if (result.isFailure) {
                     Toast.makeText(context, "Error connecting to the session.", Toast.LENGTH_SHORT).show()
-                    onEndCall()
+                    onEndCall(Unit)
                 }
             }
 
@@ -264,7 +264,7 @@ fun VoiceAssistant(
                     },
                     isChatEnabled = chatVisible,
                     onChatClick = { chatVisible = !chatVisible },
-                    onExitClick = onEndCall,
+                    onExitClick = { onEndCall(Unit) },
                     currentMode = viewModel.currentMode,
                     onAudioModeChange = { mode -> viewModel.switchAudioMode(mode) },
                     modifier = Modifier.layoutId(LAYOUT_ID_CONTROL_BAR)
