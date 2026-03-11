@@ -52,7 +52,7 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
                 audioHandler = NoAudioHandler(),
                 javaAudioDeviceModuleCustomizer = { builder ->
                     builder
-                        .setAudioSource(MediaRecorder.AudioSource.UNPROCESSED)
+                        .setAudioSource(MediaRecorder.AudioSource.CAMCORDER)
                         .setUseHardwareAcousticEchoCanceler(false)
                         .setUseHardwareNoiseSuppressor(false)
                 }
