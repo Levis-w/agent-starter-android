@@ -117,7 +117,7 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
                     .url("$apiBaseUrl/api/get-token")
                     .post(json.toRequestBody("application/json".toMediaType()))
                     .build()
-                
+                withTimeout(50) {
                 val response = httpClient.newCall(request).execute()
                 
                 if (!response.isSuccessful) {
@@ -133,6 +133,7 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
                     room = jsonObject.getString("room"),
                     url = jsonObject.getString("url")
                 )
+                }
             } catch (e: Exception) {
                 Log.e("VoiceAssistant", "Failed to fetch token", e)
                 throw e
