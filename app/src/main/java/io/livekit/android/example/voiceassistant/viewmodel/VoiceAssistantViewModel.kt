@@ -63,28 +63,19 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
         private set
 
     private fun createRoomInstance(mode: AudioMode): Room {
-        val audioOptions = when (mode) {
-            AudioMode.MEDIA_HIFI -> AudioOptions(
-                audioOutputType = AudioType.MediaAudioType(),
-                audioHandler = NoAudioHandler(),
-                javaAudioDeviceModuleCustomizer = { builder ->
-                    builder
-                        .setAudioSource(MediaRecorder.AudioSource.CAMCORDER)
-                        .setUseHardwareAcousticEchoCanceler(false)
-                        .setUseHardwareNoiseSuppressor(false)
-                }
-            )
-            AudioMode.CALL_SPEAKER, AudioMode.CALL_EARPIECE -> AudioOptions(
-                audioOutputType = AudioType.CallAudioType(),
-                audioHandler = NoAudioHandler(),
-                javaAudioDeviceModuleCustomizer = { builder ->
-                    builder
-                        .setAudioSource(MediaRecorder.AudioSource.VOICE_COMMUNICATION)
-                        .setUseHardwareAcousticEchoCanceler(true)
-                        .setUseHardwareNoiseSuppressor(true)
-                }
-            )
-        }
+        // 始终使用 MediaAudioType 以保证 48kHz 高音质底座
+        // 具体的硬件降噪触发由 applyAudioState 动态控制
+        val audioOptions = AudioOptions(
+            audioOutputType = AudioType.MediaAudioType(),
+            audioHandler = NoAudioHandler(),
+            javaAudioDeviceModuleCustomizer = { builder ->
+                builder
+                    .setAudioSource(MediaRecorder.AudioSource.CAMCORDER)
+                    // 设置为 false 以避开 SDK 的自动逻辑，交由 applyAudioState 强制触发系统底层硬件
+                    .setUseHardwareAcousticEchoCanceler(false)
+                    .setUseHardwareNoiseSuppressor(false)
+            }
+        )
         return LiveKit.create(getApplication(), overrides = LiveKitOverrides(audioOptions = audioOptions))
     }
 
@@ -106,84 +97,26 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
     }
 
     /**
-     * 从服务器获取动态 token
-     */
-    suspend fun fetchToken(mode: String): TokenResponse {
-        return withContext(Dispatchers.IO) {
-            try {
-                val json = """{"mode": "$mode", "identity_prefix": "my-phone"}"""
-                
-                val request = Request.Builder()
-                    .url("$apiBaseUrl/api/get-token")
-                    .post(json.toRequestBody("application/json".toMediaType()))
-                    .build()
-                
-                val response = httpClient.newCall(request).execute()
-                
-                if (!response.isSuccessful) {
-                    throw Exception("Failed to get token: ${response.code}")
-                }
-                
-                val responseBody = response.body?.string() ?: throw Exception("Empty response")
-                val jsonObject = JSONObject(responseBody)
-                
-                TokenResponse(
-                    token = jsonObject.getString("token"),
-                    identity = jsonObject.getString("identity"),
-                    room = jsonObject.getString("room"),
-                    url = jsonObject.getString("url")
-                )
-            } catch (e: Exception) {
-                Log.e("VoiceAssistant", "Failed to fetch token", e)
-                throw e
-            }
-        }
-    }
-
-    /**
-     * 切换音频模式（带动态 token）
+     * 切换音频模式（不重连房间，秒级切换音效）
      */
     suspend fun switchAudioMode(mode: AudioMode) {
         if (currentMode == mode) return
         
-        try {
-            Log.d("VoiceAssistant", "Switching audio mode to: $mode")
-            
-            // 1. 获取新 token（带新 identity）
-            val modeStr = if (mode == AudioMode.MEDIA_HIFI) "hardware" else "software"
-            val tokenResponse = fetchToken(mode = modeStr)
-            
-            Log.d("VoiceAssistant", "Got new token, identity: ${tokenResponse.identity}")
-            
-            // 2. 更新全局 token（TokenExt.kt 中的 hardcodedToken）
-            io.livekit.android.example.voiceassistant.updateToken(tokenResponse.token)
-            
-            // 3. 更新连接信息
-            connectionUrl = tokenResponse.url
-            connectionToken = tokenResponse.token
-            
-            // 4. 更新 SDK 的 TokenSource
-            tokenSource = io.livekit.android.token.TokenSource.fromLiteral(connectionUrl, connectionToken)
-            
-            // 5. 应用音频状态
-            applyAudioState(mode)
-            
-            // 6. 更新当前模式
-            currentMode = mode
-            
-            // 7. 销毁旧 room 并创建新 room
-            room.disconnect()
-            room.release()
-            room = createRoomInstance(mode)
-            
-            Log.d("VoiceAssistant", "Successfully switched to $modeStr mode")
-            
-            
-        } catch (e: Exception) {
-            Log.e("VoiceAssistant", "Failed to switch audio mode", e)
-            // 降级处理：使用旧配置重试
-            currentMode = mode
-            applyAudioState(mode)
+        Log.d("VoiceAssistant", "Instantly switching audio mode to: $mode")
+        
+        // 1. 物理层：瞬间切换 AudioManager 模式
+        // 这会触发系统的硬件 AEC 挂载，同时保留 Media 通道的高采样率
+        applyAudioState(mode)
+        
+        // 2. 更新状态（这会触发 UI 的 LaunchedEffect 从而更新音轨配置）
+        currentMode = mode
+        
+        // 3. 守护任务：持续确认物理状态（防止系统自动重置）
+        viewModelScope.launch {
+            repeat(5) {
+                applyAudioState(mode)
+                delay(300)
+            }
         }
     }
     
@@ -198,11 +131,7 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
         } else {
             io.livekit.android.token.TokenSource.fromLiteral(url, token)
         }
-        viewModelScope.launch {
-        delay(100)
-        switchAudioMode(AudioMode.CALL_SPEAKER)
     }
-}
     
     override fun onCleared() {
         super.onCleared()
