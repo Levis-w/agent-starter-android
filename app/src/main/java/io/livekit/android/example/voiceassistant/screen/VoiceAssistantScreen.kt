@@ -182,7 +182,7 @@ fun VoiceAssistant(
                     }
                     val track = localParticipant.createAudioTrack("microphone", options = audioOptions)
                     localParticipant.publishAudioTrack(track)
-                    Log.d("VoiceAssistant", "🎤 已发布新音轨，配置：${if(audioOptions.echoCancellation) "软件AEC" else "硬件AEC"}")
+                    
                 }
             }
 
