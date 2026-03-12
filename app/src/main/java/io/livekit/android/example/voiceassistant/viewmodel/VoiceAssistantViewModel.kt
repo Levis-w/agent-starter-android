@@ -195,7 +195,7 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
             currentMode = mode
             applyAudioState(mode)
             viewModelScope.launch {
-                delay(500)
+                delay(800)
             Log.d("VoiceAssistant", "fallback 完成，总耗时：${System.currentTimeMillis() - startTime}ms")
         }
       }
@@ -214,7 +214,7 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
 
         viewModelScope.launch {
             Log.d("VoiceAssistant", "等待 100ms 后开始自动切换...")
-            delay(100)
+            delay(3000)
             Log.d("VoiceAssistant", "开始自动切换到 CALL_SPEAKER...")
             switchAudioMode(AudioMode.CALL_SPEAKER)
         }
