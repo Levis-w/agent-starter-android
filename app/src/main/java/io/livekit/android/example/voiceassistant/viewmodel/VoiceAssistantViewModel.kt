@@ -194,9 +194,6 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
             Log.e("VoiceAssistant", "错误：${e.message}")
             currentMode = mode
             applyAudioState(mode)
-            room.disconnect()
-            room.release()
-            room = createRoomInstance(mode)
             Log.d("VoiceAssistant", "fallback 完成，总耗时：${System.currentTimeMillis() - startTime}ms")
         }
     }
