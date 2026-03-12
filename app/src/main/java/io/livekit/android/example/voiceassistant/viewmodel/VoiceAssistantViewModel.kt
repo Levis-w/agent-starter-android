@@ -55,9 +55,9 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
     var currentMode by mutableStateOf(AudioMode.MEDIA_HIFI)
 
     private val httpClient = OkHttpClient.Builder()
-        .connectTimeout(50, java.util.concurrent.TimeUnit.MILLISECONDS)
-        .readTimeout(50, java.util.concurrent.TimeUnit.MILLISECONDS)
-        .writeTimeout(50, java.util.concurrent.TimeUnit.MILLISECONDS)
+        .connectTimeout(500, java.util.concurrent.TimeUnit.MILLISECONDS)
+        .readTimeout(500, java.util.concurrent.TimeUnit.MILLISECONDS)
+        .writeTimeout(500, java.util.concurrent.TimeUnit.MILLISECONDS)
         .build()
     private val apiBaseUrl = "http://192.168.6.233:8080"
 
