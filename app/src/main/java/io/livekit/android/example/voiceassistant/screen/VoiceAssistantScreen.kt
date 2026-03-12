@@ -146,25 +146,35 @@ fun VoiceAssistant(
             val isCameraEnabled by localMedia::isCameraEnabled
             val isScreenShareEnabled by localMedia::isScreenShareEnabled
 
-            LaunchedEffect(canEnableMic, requestedAudio) {
+            LaunchedEffect(canEnableMic, requestedAudio, viewModel.currentMode) {
                 session.waitUntilConnected()
                 
-                // 手动发布音轨以控制 AEC
                 val localParticipant = room.localParticipant
                 
+                // 1. 先取消发布旧音轨（如果有的话）
+                localParticipant.audioTracks.forEach { (publication) ->
+                    val track = publication.track
+                    if (track != null) {
+                        localParticipant.unpublishTrack(track)
+                    }
+                }
+
+                // 2. 根据当前模式创建最优配置
                 if (canEnableMic && requestedAudio) {
                     val audioOptions = if (viewModel.currentMode == AudioMode.MEDIA_HIFI) {
+                        // 高清模式：开启软件降噪（双重保险）
                         io.livekit.android.room.track.LocalAudioTrackOptions(
                             echoCancellation = true,
                             noiseSuppression = true,
-                            autoGainControl = false,
+                            autoGainControl = true,
                             highPassFilter = true,
                             typingNoiseDetection = true
                         )
                     } else {
+                        // 硬件降噪模式（通话模式）：关闭软件处理，把 CPU 让给系统硬件处理
                         io.livekit.android.room.track.LocalAudioTrackOptions(
-                            echoCancellation = false, // 硬件处理模式
-                            noiseSuppression = false,
+                            echoCancellation = false, // 依赖系统的硬件 AEC
+                            noiseSuppression = false,  // 依赖系统的硬件 NS
                             autoGainControl = false,
                             highPassFilter = false,
                             typingNoiseDetection = false
@@ -172,6 +182,7 @@ fun VoiceAssistant(
                     }
                     val track = localParticipant.createAudioTrack("microphone", options = audioOptions)
                     localParticipant.publishAudioTrack(track)
+                    Log.d("VoiceAssistant", "🎤 已发布新音轨，配置：${if(audioOptions.echoCancellation) "软件AEC" else "硬件AEC"}")
                 }
             }
 
