@@ -45,6 +45,7 @@ import androidx.constraintlayout.compose.Dimension
 import androidx.constraintlayout.compose.Visibility
 import androidx.constraintlayout.compose.layoutId
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import android.util.Log
 import io.livekit.android.annotations.Beta
 import io.livekit.android.compose.local.SessionScope
 import io.livekit.android.compose.local.requireRoom
@@ -63,6 +64,7 @@ import io.livekit.android.example.voiceassistant.ui.ChatLog
 import io.livekit.android.example.voiceassistant.ui.ControlBar
 import io.livekit.android.example.voiceassistant.viewmodel.VoiceAssistantViewModel
 import io.livekit.android.example.voiceassistant.viewmodel.AudioMode
+import io.livekit.android.room.track.Track
 import io.livekit.android.room.track.screencapture.ScreenCaptureParams
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -152,7 +154,7 @@ fun VoiceAssistant(
                 val localParticipant = room.localParticipant
                 
                 // 1. 先取消发布旧音轨（如果有的话）
-                localParticipant.audioTrackPublications.forEach { publication ->
+                localParticipant.audioTracks.values.forEach { publication ->
                     val track = publication.track
                     if (track != null) {
                         localParticipant.unpublishTrack(track)
