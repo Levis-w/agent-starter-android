@@ -45,7 +45,6 @@ import androidx.constraintlayout.compose.Dimension
 import androidx.constraintlayout.compose.Visibility
 import androidx.constraintlayout.compose.layoutId
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import android.util.Log
 import io.livekit.android.annotations.Beta
 import io.livekit.android.compose.local.SessionScope
 import io.livekit.android.compose.local.requireRoom
@@ -64,7 +63,6 @@ import io.livekit.android.example.voiceassistant.ui.ChatLog
 import io.livekit.android.example.voiceassistant.ui.ControlBar
 import io.livekit.android.example.voiceassistant.viewmodel.VoiceAssistantViewModel
 import io.livekit.android.example.voiceassistant.viewmodel.AudioMode
-import io.livekit.android.room.track.Track
 import io.livekit.android.room.track.screencapture.ScreenCaptureParams
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -148,36 +146,25 @@ fun VoiceAssistant(
             val isCameraEnabled by localMedia::isCameraEnabled
             val isScreenShareEnabled by localMedia::isScreenShareEnabled
 
-            LaunchedEffect(canEnableMic, requestedAudio, viewModel.currentMode) {
+            LaunchedEffect(canEnableMic, requestedAudio) {
                 session.waitUntilConnected()
                 
+                // 手动发布音轨以控制 AEC
                 val localParticipant = room.localParticipant
                 
-                // 1. 先取消发布旧音轨（如果有的话）
-                val publications = localParticipant.audioTrackPublications
-                for (publication in publications) {
-                    val track = publication.track
-                    if (track != null) {
-                        localParticipant.unpublishTrack(track)
-                    }
-                }
-
-                // 2. 根据当前模式创建最优配置
                 if (canEnableMic && requestedAudio) {
                     val audioOptions = if (viewModel.currentMode == AudioMode.MEDIA_HIFI) {
-                        // 高清模式：开启软件降噪（双重保险）
                         io.livekit.android.room.track.LocalAudioTrackOptions(
                             echoCancellation = true,
                             noiseSuppression = true,
-                            autoGainControl = true,
+                            autoGainControl = false,
                             highPassFilter = true,
                             typingNoiseDetection = true
                         )
                     } else {
-                        // 硬件降噪模式（通话模式）：关闭软件处理，把 CPU 让给系统硬件处理
                         io.livekit.android.room.track.LocalAudioTrackOptions(
-                            echoCancellation = false, // 依赖系统的硬件 AEC
-                            noiseSuppression = false,  // 依赖系统的硬件 NS
+                            echoCancellation = false, // 硬件处理模式
+                            noiseSuppression = false,
                             autoGainControl = false,
                             highPassFilter = false,
                             typingNoiseDetection = false
@@ -185,7 +172,6 @@ fun VoiceAssistant(
                     }
                     val track = localParticipant.createAudioTrack("microphone", options = audioOptions)
                     localParticipant.publishAudioTrack(track)
-                    Log.d("VoiceAssistant", "🎤 已发布新音轨，配置：${if(audioOptions.echoCancellation) "软件AEC" else "硬件AEC"}")
                 }
             }
 
