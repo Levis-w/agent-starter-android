@@ -195,7 +195,7 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
             currentMode = mode
             applyAudioState(mode)
             viewModelScope.launch {
-                delay(2000)
+                delay(3000)
             Log.d("VoiceAssistant", "fallback 完成，总耗时：${System.currentTimeMillis() - startTime}ms")
         }
       }
