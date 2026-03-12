@@ -198,8 +198,8 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
                 delay(2000)
             Log.d("VoiceAssistant", "fallback 完成，总耗时：${System.currentTimeMillis() - startTime}ms")
         }
+      }
     }
-
     init {
         Log.d("VoiceAssistant", "===== ViewModel 初始化 =====")
         val (sandboxId, url, token) = savedStateHandle.toRoute<VoiceAssistantRoute>()
