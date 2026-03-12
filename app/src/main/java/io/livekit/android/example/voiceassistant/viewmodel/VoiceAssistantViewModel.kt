@@ -55,9 +55,9 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
     var currentMode by mutableStateOf(AudioMode.MEDIA_HIFI)
 
     private val httpClient = OkHttpClient.Builder()
-        .connectTimeout(2000, java.util.concurrent.TimeUnit.MILLISECONDS)
-        .readTimeout(2000, java.util.concurrent.TimeUnit.MILLISECONDS)
-        .writeTimeout(2000, java.util.concurrent.TimeUnit.MILLISECONDS)
+        .connectTimeout(1000, java.util.concurrent.TimeUnit.MILLISECONDS)
+        .readTimeout(1000, java.util.concurrent.TimeUnit.MILLISECONDS)
+        .writeTimeout(1000, java.util.concurrent.TimeUnit.MILLISECONDS)
         .build()
     private val apiBaseUrl = "http://192.168.6.233:8080"
 
@@ -194,6 +194,9 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
             Log.e("VoiceAssistant", "错误：${e.message}")
             currentMode = mode
             applyAudioState(mode)
+            room.disconnect()
+            room.release()
+            room = createRoomInstance(mode)
             Log.d("VoiceAssistant", "fallback 完成，总耗时：${System.currentTimeMillis() - startTime}ms")
         }
     }
