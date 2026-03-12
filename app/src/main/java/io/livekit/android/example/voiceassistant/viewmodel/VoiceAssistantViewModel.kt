@@ -33,6 +33,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
+import java.util.concurrent.TimeUnit
 
 enum class AudioMode {
     MEDIA_HIFI,
@@ -53,7 +54,11 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
     private val audioManager = application.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     var currentMode by mutableStateOf(AudioMode.MEDIA_HIFI)
 
-    private val httpClient = OkHttpClient()
+    private val httpClient = OkHttpClient.Builder()
+        .connectTimeout(50, java.util.concurrent.TimeUnit.MILLISECONDS)
+        .readTimeout(50, java.util.concurrent.TimeUnit.MILLISECONDS)
+        .writeTimeout(50, java.util.concurrent.TimeUnit.MILLISECONDS)
+        .build()
     private val apiBaseUrl = "http://192.168.6.233:8080"
 
     lateinit var tokenSource: io.livekit.android.token.TokenSource
