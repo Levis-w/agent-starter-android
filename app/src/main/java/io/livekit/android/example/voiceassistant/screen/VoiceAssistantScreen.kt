@@ -264,7 +264,11 @@ fun VoiceAssistant(
                     onChatClick = { chatVisible = !chatVisible },
                     onExitClick = onEndCall,
                     currentMode = viewModel.currentMode,
-                    onAudioModeChange = { mode -> viewModel.switchAudioMode(mode) },
+                    onAudioModeChange = { mode ->
+                        coroutineScope.launch {
+                            viewModel.switchAudioMode(mode)
+                        }
+                    },
                     modifier = Modifier.layoutId(LAYOUT_ID_CONTROL_BAR)
                 )
 
