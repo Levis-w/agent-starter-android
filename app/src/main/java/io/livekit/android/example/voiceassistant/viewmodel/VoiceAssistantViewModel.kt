@@ -178,13 +178,6 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
             
             Log.d("VoiceAssistant", "Successfully switched to $modeStr mode")
             
-            // 8. 守护任务：持续确认物理状态（防止系统自动重置）
-            viewModelScope.launch {
-                repeat(10) {
-                    applyAudioState(mode)
-                    delay(500)
-                }
-            }
             
         } catch (e: Exception) {
             Log.e("VoiceAssistant", "Failed to switch audio mode", e)
