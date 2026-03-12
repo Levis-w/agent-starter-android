@@ -152,7 +152,7 @@ fun VoiceAssistant(
                 val localParticipant = room.localParticipant
                 
                 // 1. 先取消发布旧音轨（如果有的话）
-                localParticipant.audioTracks.forEach { (publication) ->
+                localParticipant.audioTrackPublications.forEach { publication ->
                     val track = publication.track
                     if (track != null) {
                         localParticipant.unpublishTrack(track)
@@ -182,7 +182,7 @@ fun VoiceAssistant(
                     }
                     val track = localParticipant.createAudioTrack("microphone", options = audioOptions)
                     localParticipant.publishAudioTrack(track)
-                    
+                    Log.d("VoiceAssistant", "🎤 已发布新音轨，配置：${if(audioOptions.echoCancellation) "软件AEC" else "硬件AEC"}")
                 }
             }
 
