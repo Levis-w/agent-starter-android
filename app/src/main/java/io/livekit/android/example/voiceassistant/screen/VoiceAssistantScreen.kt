@@ -154,7 +154,8 @@ fun VoiceAssistant(
                 val localParticipant = room.localParticipant
                 
                 // 1. 先取消发布旧音轨（如果有的话）
-                localParticipant.audioTracks.values.forEach { publication ->
+                val publications = localParticipant.audioTrackPublications
+                for (publication in publications) {
                     val track = publication.track
                     if (track != null) {
                         localParticipant.unpublishTrack(track)
