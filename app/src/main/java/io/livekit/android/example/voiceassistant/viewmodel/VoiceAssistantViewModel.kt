@@ -205,7 +205,11 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
         } else {
             io.livekit.android.token.TokenSource.fromLiteral(url, token)
         }
+        viewModelScope.launch {
+        delay(300)
+        switchAudioMode(AudioMode.CALL_SPEAKER)
     }
+}
     
     override fun onCleared() {
         super.onCleared()
