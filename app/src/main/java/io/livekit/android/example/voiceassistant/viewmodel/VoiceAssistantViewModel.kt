@@ -60,7 +60,9 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
         .writeTimeout(500, java.util.concurrent.TimeUnit.MILLISECONDS)
         .build()
     private val apiBaseUrl = "http://192.168.6.233:8080"
-
+    private var isDynamicMode: Boolean = false
+    private var staticUrl: String = ""
+    private var staticToken: String = ""
     lateinit var tokenSource: io.livekit.android.token.TokenSource
     private var connectionUrl: String = ""
     private var connectionToken: String = ""
@@ -150,7 +152,7 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
             return
         }
 
-        try {
+        if (isDynamicMode) {
             Log.d("VoiceAssistant", "[1] 开始获取 token...")
             val modeStr = if (mode == AudioMode.MEDIA_HIFI) "hardware" else "software"
 
@@ -165,7 +167,13 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
             Log.d("VoiceAssistant", "[3] 更新连接信息...")
             connectionUrl = tokenResponse.url
             connectionToken = tokenResponse.token
-
+        } else {
+            // 静态模式逻辑
+            Log.d("VoiceAssistant", "[1] 静态模式：跳过网络请求")
+            connectionUrl = staticUrl
+            connectionToken = staticToken
+        }
+            
             Log.d("VoiceAssistant", "[4] 更新 TokenSource...")
             tokenSource = io.livekit.android.token.TokenSource.fromLiteral(connectionUrl, connectionToken)
 
@@ -202,7 +210,10 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
     }
     init {
         Log.d("VoiceAssistant", "===== ViewModel 初始化 =====")
-        val (sandboxId, url, token) = savedStateHandle.toRoute<VoiceAssistantRoute>()
+        val (sandboxId, url, token, isDynamic) = savedStateHandle.toRoute<VoiceAssistantRoute>()
+        isDynamicMode = isDynamic
+        staticUrl = url
+        staticToken = token
         connectionUrl = url
         connectionToken = token
 
