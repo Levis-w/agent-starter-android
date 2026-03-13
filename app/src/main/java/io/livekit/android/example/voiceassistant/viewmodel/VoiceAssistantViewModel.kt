@@ -151,28 +151,29 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
             Log.d("VoiceAssistant", "已经是目标模式，跳过切换")
             return
         }
+        
+        try {
+            if (isDynamicMode) {
+               Log.d("VoiceAssistant", "[1] 开始获取 token...")
+               val modeStr = if (mode == AudioMode.MEDIA_HIFI) "hardware" else "software"
 
-        if (isDynamicMode) {
-            Log.d("VoiceAssistant", "[1] 开始获取 token...")
-            val modeStr = if (mode == AudioMode.MEDIA_HIFI) "hardware" else "software"
+               val tokenStart = System.currentTimeMillis()
+               val tokenResponse = fetchToken(mode = modeStr)
+               Log.d("VoiceAssistant", "[1] 获取 token 完成，耗时：${System.currentTimeMillis() - tokenStart}ms")
+               Log.d("VoiceAssistant", "    identity: ${tokenResponse.identity}")
 
-            val tokenStart = System.currentTimeMillis()
-            val tokenResponse = fetchToken(mode = modeStr)
-            Log.d("VoiceAssistant", "[1] 获取 token 完成，耗时：${System.currentTimeMillis() - tokenStart}ms")
-            Log.d("VoiceAssistant", "    identity: ${tokenResponse.identity}")
+               Log.d("VoiceAssistant", "[2] 更新全局 token...")
+               io.livekit.android.example.voiceassistant.updateToken(tokenResponse.token)
 
-            Log.d("VoiceAssistant", "[2] 更新全局 token...")
-            io.livekit.android.example.voiceassistant.updateToken(tokenResponse.token)
-
-            Log.d("VoiceAssistant", "[3] 更新连接信息...")
-            connectionUrl = tokenResponse.url
-            connectionToken = tokenResponse.token
-        } else {
-            // 静态模式逻辑
-            Log.d("VoiceAssistant", "[1] 静态模式：跳过网络请求")
-            connectionUrl = staticUrl
-            connectionToken = staticToken
-        }
+               Log.d("VoiceAssistant", "[3] 更新连接信息...")
+               connectionUrl = tokenResponse.url
+               connectionToken = tokenResponse.token
+            } else {
+                // 静态模式逻辑
+                Log.d("VoiceAssistant", "[1] 静态模式：跳过网络请求")
+                connectionUrl = staticUrl
+                connectionToken = staticToken
+            }
             
             Log.d("VoiceAssistant", "[4] 更新 TokenSource...")
             tokenSource = io.livekit.android.token.TokenSource.fromLiteral(connectionUrl, connectionToken)
