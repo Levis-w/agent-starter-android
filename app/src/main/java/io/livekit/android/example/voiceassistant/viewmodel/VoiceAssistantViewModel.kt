@@ -19,15 +19,11 @@ import io.livekit.android.LiveKitOverrides
 import io.livekit.android.audio.NoAudioHandler
 import io.livekit.android.example.voiceassistant.screen.VoiceAssistantRoute
 import io.livekit.android.room.Room
-import io.livekit.android.room.participant.LocalParticipant
-import io.livekit.android.room.track.LocalAudioTrack
-import io.livekit.android.room.track.LocalAudioTrackOptions
-import io.livekit.android.room.track.Track
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -51,16 +47,19 @@ data class TokenResponse(
 )
 
 class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedStateHandle) : AndroidViewModel(application) {
+    
     private val audioManager = application.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     var currentMode by mutableStateOf(AudioMode.MEDIA_HIFI)
-
+    
     private val httpClient = OkHttpClient.Builder()
-        .connectTimeout(500, java.util.concurrent.TimeUnit.MILLISECONDS)
-        .readTimeout(500, java.util.concurrent.TimeUnit.MILLISECONDS)
-        .writeTimeout(500, java.util.concurrent.TimeUnit.MILLISECONDS)
+        .connectTimeout(500, TimeUnit.MILLISECONDS)
+        .readTimeout(500, TimeUnit.MILLISECONDS)
+        .writeTimeout(500, TimeUnit.MILLISECONDS)
         .build()
+    
     private val apiBaseUrl = "http://192.168.6.233:8080"
-
+    
+    // 显式引用 SDK 的 TokenSource 避免冲突
     lateinit var tokenSource: io.livekit.android.token.TokenSource
     private var connectionUrl: String = ""
     private var connectionToken: String = ""
@@ -75,7 +74,7 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
                 audioHandler = NoAudioHandler(),
                 javaAudioDeviceModuleCustomizer = { builder ->
                     builder
-                        .setAudioSource(MediaRecorder.AudioSource.CAMCORDER)
+                        .setAudioSource(MediaRecorder.AudioSource.VOICE_RECOGNITION)
                         .setUseHardwareAcousticEchoCanceler(false)
                         .setUseHardwareNoiseSuppressor(false)
                 }
@@ -111,7 +110,7 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
         }
     }
 
-    suspend fun fetchToken(mode: String): TokenResponse {
+    private suspend fun fetchToken(mode: String): TokenResponse {
         return withContext(Dispatchers.IO) {
             try {
                 val json = """{"mode": "$mode", "identity_prefix": "my-phone"}"""
@@ -119,7 +118,7 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
                     .url("$apiBaseUrl/api/get-token")
                     .post(json.toRequestBody("application/json".toMediaType()))
                     .build()
-
+                
                 withTimeout(50) {
                     val response = httpClient.newCall(request).execute()
                     if (!response.isSuccessful) {
@@ -144,51 +143,129 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
     suspend fun switchAudioMode(mode: AudioMode) {
         val startTime = System.currentTimeMillis()
         Log.d("VoiceAssistant", "========== 开始切换模式：$mode ==========")
-
+        
         if (currentMode == mode) {
             Log.d("VoiceAssistant", "已经是目标模式，跳过切换")
             return
         }
-
+        
+        // ========== 特殊处理 CALL_SPEAKER 模式 ==========
+        if (mode == AudioMode.CALL_SPEAKER) {
+            val isFromEarpiece = currentMode == AudioMode.CALL_EARPIECE
+            val isFromMedia = currentMode == AudioMode.MEDIA_HIFI
+            
+            if (isFromEarpiece) {
+                // 从听筒切回：需要获取 token，让服务器创建新的 MEDIA 房间
+                Log.d("VoiceAssistant", "从听筒切回，需要获取 token 创建 MEDIA 房间...")
+                
+                try {
+                    // [1] 先获取 token
+                    val tokenResponse = fetchToken(mode = "hardware")
+                    Log.d("VoiceAssistant", "获取 token 完成，identity: ${tokenResponse.identity}")
+                    
+                    // [2] 先断开旧房间（CALL_EARPIECE）
+                    Log.d("VoiceAssistant", "断开旧房间...")
+                    room.disconnect()
+                    Log.d("VoiceAssistant", "释放旧房间...")
+                    room.release()
+                    
+                    // [3] 等待服务器清理完成
+                    Log.d("VoiceAssistant", "等待 2000ms 确保服务器清理...")
+                    delay(2000)
+                    
+                    // [4] 再更新全局 token 和 TokenSource
+                    Log.d("VoiceAssistant", "更新全局 token...")
+                    io.livekit.android.example.voiceassistant.updateToken(tokenResponse.token)
+                    connectionUrl = tokenResponse.url
+                    connectionToken = tokenResponse.token
+                    tokenSource = io.livekit.android.token.TokenSource.fromLiteral(connectionUrl, connectionToken)
+                    
+                    // [5] 创建新的 MEDIA_HIFI 房间
+                    Log.d("VoiceAssistant", "创建 MEDIA_HIFI 房间...")
+                    room = createRoomInstance(AudioMode.MEDIA_HIFI)
+                    
+                    // [6] 延迟 1.5 秒让房间初始化
+                    Log.d("VoiceAssistant", "延迟 1.5 秒让房间初始化...")
+                    delay(1500)
+                    
+                    // [7] fallback：应用 CALL_SPEAKER 音频状态，触发硬件 AEC
+                    Log.d("VoiceAssistant", "应用 CALL_SPEAKER 音频状态（fallback）...")
+                    currentMode = mode
+                    applyAudioState(mode)
+                    
+                    Log.d("VoiceAssistant", "========== 切换成功！总耗时：${System.currentTimeMillis() - startTime}ms ==========")
+                    return
+                } catch (e: Exception) {
+                    Log.e("VoiceAssistant", "获取 token 失败，使用 fallback: ${e.message}")
+                    // 失败则直接 fallback
+                }
+            }
+            
+            // 从 MEDIA_HIFI 切回 或 token 获取失败：直接 fallback，复用服务器房间
+            Log.d("VoiceAssistant", "CALL_SPEAKER 模式，fallback 复用房间...")
+            
+            if (isFromEarpiece) {
+                // 从听筒切回但 token 失败，先重建本地房间
+                room.disconnect()
+                room.release()
+                room = createRoomInstance(AudioMode.MEDIA_HIFI)
+                delay(1500)
+            }
+            
+            currentMode = mode
+            applyAudioState(mode)
+            
+            Log.d("VoiceAssistant", "========== 切换成功！总耗时：${System.currentTimeMillis() - startTime}ms ==========")
+            return
+        }
+        // ========== CALL_SPEAKER 处理结束 ==========
+        
+        // 其他模式走正常流程（获取 token）
         try {
             Log.d("VoiceAssistant", "[1] 开始获取 token...")
             val modeStr = if (mode == AudioMode.MEDIA_HIFI) "hardware" else "software"
-
             val tokenStart = System.currentTimeMillis()
             val tokenResponse = fetchToken(mode = modeStr)
             Log.d("VoiceAssistant", "[1] 获取 token 完成，耗时：${System.currentTimeMillis() - tokenStart}ms")
-            Log.d("VoiceAssistant", "    identity: ${tokenResponse.identity}")
-
-            Log.d("VoiceAssistant", "[2] 更新全局 token...")
+            Log.d("VoiceAssistant", "  identity: ${tokenResponse.identity}")
+            
+            Log.d("VoiceAssistant", "[2] 断开旧 room...")
+            room.disconnect()
+            Log.d("VoiceAssistant", "[3] 释放旧 room...")
+            room.release()
+            
+            // 等待服务器清理完成
+            Log.d("VoiceAssistant", "[4] 等待 2000ms 确保服务器清理...")
+            delay(2000)
+            
+            Log.d("VoiceAssistant", "[5] 更新全局 token...")
             io.livekit.android.example.voiceassistant.updateToken(tokenResponse.token)
-
-            Log.d("VoiceAssistant", "[3] 更新连接信息...")
+            
+            Log.d("VoiceAssistant", "[6] 更新连接信息...")
             connectionUrl = tokenResponse.url
             connectionToken = tokenResponse.token
-
-            Log.d("VoiceAssistant", "[4] 更新 TokenSource...")
+            
+            Log.d("VoiceAssistant", "[7] 更新 TokenSource...")
             tokenSource = io.livekit.android.token.TokenSource.fromLiteral(connectionUrl, connectionToken)
-
-            Log.d("VoiceAssistant", "[5] 应用音频状态...")
+            
+            Log.d("VoiceAssistant", "[8] 创建新 room...")
+            val newRoom = createRoomInstance(mode)
+            
+            Log.d("VoiceAssistant", "[9] 更新为新 room...")
+            room = newRoom
+            
+            Log.d("VoiceAssistant", "[10] 延迟 1.5 秒...")
+            delay(1500)
+            
+            Log.d("VoiceAssistant", "[11] 应用音频状态...")
             val audioStart = System.currentTimeMillis()
             applyAudioState(mode)
-            Log.d("VoiceAssistant", "[5] 音频状态完成，耗时：${System.currentTimeMillis() - audioStart}ms")
-
-            Log.d("VoiceAssistant", "[6] 更新当前模式...")
+            Log.d("VoiceAssistant", "[11] 音频状态完成，耗时：${System.currentTimeMillis() - audioStart}ms")
+            
+            Log.d("VoiceAssistant", "[12] 更新当前模式...")
             currentMode = mode
-
-            Log.d("VoiceAssistant", "[7] 销毁旧 room...")
-            val roomStart = System.currentTimeMillis()
-            room.disconnect()
-            Log.d("VoiceAssistant", "    disconnect 耗时：${System.currentTimeMillis() - roomStart}ms")
-
-            room.release()
-            Log.d("VoiceAssistant", "[7] 创建新 room...")
-            room = createRoomInstance(mode)
-            Log.d("VoiceAssistant", "[7] room 完成，耗时：${System.currentTimeMillis() - roomStart}ms")
-
+            
             Log.d("VoiceAssistant", "========== 切换成功！总耗时：${System.currentTimeMillis() - startTime}ms ==========")
-
         } catch (e: Exception) {
             Log.e("VoiceAssistant", "========== 切换失败，使用 fallback ==========")
             Log.e("VoiceAssistant", "错误：${e.message}")
@@ -196,30 +273,32 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
             applyAudioState(mode)
             viewModelScope.launch {
                 delay(800)
-            Log.d("VoiceAssistant", "fallback 完成，总耗时：${System.currentTimeMillis() - startTime}ms")
+                Log.d("VoiceAssistant", "fallback 完成，总耗时：${System.currentTimeMillis() - startTime}ms")
+            }
         }
-      }
     }
+    
     init {
         Log.d("VoiceAssistant", "===== ViewModel 初始化 =====")
         val (sandboxId, url, token) = savedStateHandle.toRoute<VoiceAssistantRoute>()
         connectionUrl = url
         connectionToken = token
-
+        
+        // 初始化 SDK 格式的 TokenSource
         tokenSource = if (sandboxId.isNotEmpty()) {
             io.livekit.android.token.TokenSource.fromSandboxTokenServer(sandboxId)
         } else {
             io.livekit.android.token.TokenSource.fromLiteral(url, token)
         }
-
+        
         viewModelScope.launch {
-            Log.d("VoiceAssistant", "等待 100ms 后开始自动切换...")
+            Log.d("VoiceAssistant", "等待 1.5 秒后开始自动切换...")
             delay(1500)
             Log.d("VoiceAssistant", "开始自动切换到 CALL_SPEAKER...")
             switchAudioMode(AudioMode.CALL_SPEAKER)
         }
     }
-
+    
     override fun onCleared() {
         super.onCleared()
         Log.d("VoiceAssistant", "ViewModel 清理中...")
