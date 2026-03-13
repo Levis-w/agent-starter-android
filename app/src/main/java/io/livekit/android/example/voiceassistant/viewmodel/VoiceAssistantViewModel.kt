@@ -168,10 +168,15 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
                     connectionToken = tokenResponse.token
                     tokenSource = io.livekit.android.token.TokenSource.fromLiteral(connectionUrl, connectionToken)
                     
-                    // 销毁旧的 CALL_EARPIECE 房间
-                    Log.d("VoiceAssistant", "销毁旧房间...")
+                    // 先断开并释放旧房间
+                    Log.d("VoiceAssistant", "断开旧房间...")
                     room.disconnect()
+                    Log.d("VoiceAssistant", "释放旧房间...")
                     room.release()
+                    
+                    // 等待一下确保服务器清理完成
+                    Log.d("VoiceAssistant", "等待 500ms 确保服务器清理...")
+                    delay(500)
                     
                     // 创建新的 MEDIA_HIFI 房间
                     Log.d("VoiceAssistant", "创建 MEDIA_HIFI 房间...")
@@ -232,27 +237,30 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
             Log.d("VoiceAssistant", "[4] 更新 TokenSource...")
             tokenSource = io.livekit.android.token.TokenSource.fromLiteral(connectionUrl, connectionToken)
             
-            Log.d("VoiceAssistant", "[5] 创建新 room...")
-            val newRoom = createRoomInstance(mode)
-            
-            Log.d("VoiceAssistant", "[6] 销毁旧 room...")
-            val roomStart = System.currentTimeMillis()
+            Log.d("VoiceAssistant", "[5] 断开旧 room...")
             room.disconnect()
-            Log.d("VoiceAssistant", "  disconnect 耗时：${System.currentTimeMillis() - roomStart}ms")
+            Log.d("VoiceAssistant", "[6] 释放旧 room...")
             room.release()
             
-            Log.d("VoiceAssistant", "[7] 更新为新 room...")
+            // 等待一下确保服务器清理完成
+            Log.d("VoiceAssistant", "[7] 等待 500ms 确保服务器清理...")
+            delay(500)
+            
+            Log.d("VoiceAssistant", "[8] 创建新 room...")
+            val newRoom = createRoomInstance(mode)
+            
+            Log.d("VoiceAssistant", "[9] 更新为新 room...")
             room = newRoom
             
-            Log.d("VoiceAssistant", "[8] 延迟 1.5 秒...")
+            Log.d("VoiceAssistant", "[10] 延迟 1.5 秒...")
             delay(1500)
             
-            Log.d("VoiceAssistant", "[9] 应用音频状态...")
+            Log.d("VoiceAssistant", "[11] 应用音频状态...")
             val audioStart = System.currentTimeMillis()
             applyAudioState(mode)
-            Log.d("VoiceAssistant", "[9] 音频状态完成，耗时：${System.currentTimeMillis() - audioStart}ms")
+            Log.d("VoiceAssistant", "[11] 音频状态完成，耗时：${System.currentTimeMillis() - audioStart}ms")
             
-            Log.d("VoiceAssistant", "[10] 更新当前模式...")
+            Log.d("VoiceAssistant", "[12] 更新当前模式...")
             currentMode = mode
             
             Log.d("VoiceAssistant", "========== 切换成功！总耗时：${System.currentTimeMillis() - startTime}ms ==========")
