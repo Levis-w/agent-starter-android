@@ -72,8 +72,7 @@ import kotlinx.serialization.Serializable
 data class VoiceAssistantRoute(
     val sandboxId: String,
     val hardcodedUrl: String,
-    val hardcodedToken: String,
-    val isDynamic: Boolean = false
+    val hardcodedToken: String
 )
 
 @Composable
