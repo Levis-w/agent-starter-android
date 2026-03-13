@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -96,54 +95,23 @@ fun ConnectScreen(
 
             Spacer(Modifier.size(24.dp))
 
-            // --- 按钮 1：静态/硬编码模式 ---
+            val buttonColors = ButtonDefaults.buttonColors(
+                containerColor = Blue500,
+                contentColor = Color.White
+            )
             Button(
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Blue500,
-                    contentColor = Color.White
-                ),
+                colors = buttonColors,
                 shape = RoundedCornerShape(20),
                 onClick = {
                     val route = VoiceAssistantRoute(
                         sandboxId = sandboxID,
                         hardcodedUrl = hardcodedUrl,
-                        hardcodedToken = hardcodedToken,
-                        isDynamic = false // 使用硬编码逻辑
+                        hardcodedToken = hardcodedToken
                     )
                     navigateToVoiceAssistant(route)
                 }
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "START CALL (STATIC)",
-                        style = TextStyle(
-                            fontFamily = FontFamily.Monospace,
-                            letterSpacing = 2.sp,
-                        )
-                    )
-                }
-            }
 
-            Spacer(Modifier.height(16.dp))
-
-            // --- 按钮 2：动态模式 (8080端口) ---
-            Button(
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF4CAF50), // 绿色区分
-                    contentColor = Color.White
-                ),
-                shape = RoundedCornerShape(20),
-                onClick = {
-                    // 动态模式进入后，ViewModel 里的 switchAudioMode 会去请求后端
-                    val route = VoiceAssistantRoute(
-                        sandboxId = "", 
-                        hardcodedUrl = "", 
-                        hardcodedToken = "",
-                        isDynamic = true // 开启动态获取逻辑
-                    )
-                    navigateToVoiceAssistant(route)
-                }
-            ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     AnimatedVisibility(isConnecting) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -156,7 +124,7 @@ fun ConnectScreen(
                         }
                     }
                     Text(
-                        text = if (isConnecting) "CONNECTING" else "DYNAMIC START (8080)",
+                        text = if (isConnecting) "CONNECTING" else "START CALL",
                         style = TextStyle(
                             fontFamily = FontFamily.Monospace,
                             letterSpacing = 2.sp,
