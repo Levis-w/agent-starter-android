@@ -161,7 +161,7 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
                 room = createRoomInstance(AudioMode.MEDIA_HIFI)
                 
                 // 等待 1.5 秒再 fallback
-                delay(1500)
+                delay(2000)
             }
             
             // 强制 fallback（不获取 token）
