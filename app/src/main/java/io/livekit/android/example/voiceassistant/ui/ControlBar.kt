@@ -163,7 +163,7 @@ fun ControlBar(
                 onDismissRequest = { audioModeMenuExpanded = false }
             ) {
                 DropdownMenuItem(
-                    text = { Text("音乐模式 (软件AEC)") },
+                    text = { Text("音乐模式") },
                     onClick = {
                         onAudioModeChange(AudioMode.MEDIA_HIFI)
                         audioModeMenuExpanded = false
@@ -173,7 +173,7 @@ fun ControlBar(
                     }
                 )
                 DropdownMenuItem(
-                    text = { Text("扬声器 (硬件AEC)") },
+                    text = { Text("扬声器") },
                     onClick = {
                         onAudioModeChange(AudioMode.CALL_SPEAKER)
                         audioModeMenuExpanded = false
@@ -183,7 +183,7 @@ fun ControlBar(
                     }
                 )
                 DropdownMenuItem(
-                    text = { Text("听筒 (硬件AEC)") },
+                    text = { Text("听筒") },
                     onClick = {
                         onAudioModeChange(AudioMode.CALL_EARPIECE)
                         audioModeMenuExpanded = false
