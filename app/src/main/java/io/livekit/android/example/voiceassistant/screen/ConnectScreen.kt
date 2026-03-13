@@ -48,18 +48,6 @@ import kotlinx.serialization.Serializable
 @Serializable
 object ConnectRoute
 
-/**
- * 修改后的路由数据类，增加了 isDynamic 标记
- * 注意：如果这个类在 VoiceAssistantScreen.kt 中也有定义，请确保两边一致
- */
-@Serializable
-data class VoiceAssistantRoute(
-    val sandboxId: String,
-    val hardcodedUrl: String,
-    val hardcodedToken: String,
-    val isDynamic: Boolean = false // 默认为 false，兼容旧逻辑
-)
-
 @Composable
 fun ConnectScreen(
     navigateToVoiceAssistant: (VoiceAssistantRoute) -> Unit
