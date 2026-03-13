@@ -159,34 +159,36 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
                 Log.d("VoiceAssistant", "从听筒切回，需要获取 token 创建 MEDIA 房间...")
                 
                 try {
+                    // [1] 先获取 token
                     val tokenResponse = fetchToken(mode = "hardware")
                     Log.d("VoiceAssistant", "获取 token 完成，identity: ${tokenResponse.identity}")
                     
-                    // 更新 token
-                    io.livekit.android.example.voiceassistant.updateToken(tokenResponse.token)
-                    connectionUrl = tokenResponse.url
-                    connectionToken = tokenResponse.token
-                    tokenSource = io.livekit.android.token.TokenSource.fromLiteral(connectionUrl, connectionToken)
-                    
-                    // 先断开并释放旧房间
+                    // [2] 先断开旧房间（CALL_EARPIECE）
                     Log.d("VoiceAssistant", "断开旧房间...")
                     room.disconnect()
                     Log.d("VoiceAssistant", "释放旧房间...")
                     room.release()
                     
-                    // 等待一下确保服务器清理完成
-                    Log.d("VoiceAssistant", "等待 500ms 确保服务器清理...")
-                    delay(500)
+                    // [3] 等待服务器清理完成
+                    Log.d("VoiceAssistant", "等待 800ms 确保服务器清理...")
+                    delay(800)
                     
-                    // 创建新的 MEDIA_HIFI 房间
+                    // [4] 再更新全局 token 和 TokenSource
+                    Log.d("VoiceAssistant", "更新全局 token...")
+                    io.livekit.android.example.voiceassistant.updateToken(tokenResponse.token)
+                    connectionUrl = tokenResponse.url
+                    connectionToken = tokenResponse.token
+                    tokenSource = io.livekit.android.token.TokenSource.fromLiteral(connectionUrl, connectionToken)
+                    
+                    // [5] 创建新的 MEDIA_HIFI 房间
                     Log.d("VoiceAssistant", "创建 MEDIA_HIFI 房间...")
                     room = createRoomInstance(AudioMode.MEDIA_HIFI)
                     
-                    // 延迟 1.5 秒让房间初始化
+                    // [6] 延迟 1.5 秒让房间初始化
                     Log.d("VoiceAssistant", "延迟 1.5 秒让房间初始化...")
                     delay(1500)
                     
-                    // fallback：应用 CALL_SPEAKER 音频状态，触发硬件 AEC
+                    // [7] fallback：应用 CALL_SPEAKER 音频状态，触发硬件 AEC
                     Log.d("VoiceAssistant", "应用 CALL_SPEAKER 音频状态（fallback）...")
                     currentMode = mode
                     applyAudioState(mode)
@@ -227,24 +229,24 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
             Log.d("VoiceAssistant", "[1] 获取 token 完成，耗时：${System.currentTimeMillis() - tokenStart}ms")
             Log.d("VoiceAssistant", "  identity: ${tokenResponse.identity}")
             
-            Log.d("VoiceAssistant", "[2] 更新全局 token...")
+            Log.d("VoiceAssistant", "[2] 断开旧 room...")
+            room.disconnect()
+            Log.d("VoiceAssistant", "[3] 释放旧 room...")
+            room.release()
+            
+            // 等待服务器清理完成
+            Log.d("VoiceAssistant", "[4] 等待 800ms 确保服务器清理...")
+            delay(800)
+            
+            Log.d("VoiceAssistant", "[5] 更新全局 token...")
             io.livekit.android.example.voiceassistant.updateToken(tokenResponse.token)
             
-            Log.d("VoiceAssistant", "[3] 更新连接信息...")
+            Log.d("VoiceAssistant", "[6] 更新连接信息...")
             connectionUrl = tokenResponse.url
             connectionToken = tokenResponse.token
             
-            Log.d("VoiceAssistant", "[4] 更新 TokenSource...")
+            Log.d("VoiceAssistant", "[7] 更新 TokenSource...")
             tokenSource = io.livekit.android.token.TokenSource.fromLiteral(connectionUrl, connectionToken)
-            
-            Log.d("VoiceAssistant", "[5] 断开旧 room...")
-            room.disconnect()
-            Log.d("VoiceAssistant", "[6] 释放旧 room...")
-            room.release()
-            
-            // 等待一下确保服务器清理完成
-            Log.d("VoiceAssistant", "[7] 等待 500ms 确保服务器清理...")
-            delay(500)
             
             Log.d("VoiceAssistant", "[8] 创建新 room...")
             val newRoom = createRoomInstance(mode)
