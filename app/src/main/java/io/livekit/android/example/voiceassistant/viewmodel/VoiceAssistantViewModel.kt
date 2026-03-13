@@ -152,20 +152,59 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
         // ========== 特殊处理 CALL_SPEAKER 模式 ==========
         if (mode == AudioMode.CALL_SPEAKER) {
             val isFromEarpiece = currentMode == AudioMode.CALL_EARPIECE
+            val isFromMedia = currentMode == AudioMode.MEDIA_HIFI
             
             if (isFromEarpiece) {
-                // 从听筒切回：先重建 MEDIA_HIFI 房间
-                Log.d("VoiceAssistant", "从听筒切回，先重建 MEDIA_HIFI 房间...")
+                // 从听筒切回：需要获取 token，让服务器创建新的 MEDIA 房间
+                Log.d("VoiceAssistant", "从听筒切回，需要获取 token 创建 MEDIA 房间...")
+                
+                try {
+                    val tokenResponse = fetchToken(mode = "hardware")
+                    Log.d("VoiceAssistant", "获取 token 完成，identity: ${tokenResponse.identity}")
+                    
+                    // 更新 token
+                    io.livekit.android.example.voiceassistant.updateToken(tokenResponse.token)
+                    connectionUrl = tokenResponse.url
+                    connectionToken = tokenResponse.token
+                    tokenSource = io.livekit.android.token.TokenSource.fromLiteral(connectionUrl, connectionToken)
+                    
+                    // 销毁旧的 CALL_EARPIECE 房间
+                    Log.d("VoiceAssistant", "销毁旧房间...")
+                    room.disconnect()
+                    room.release()
+                    
+                    // 创建新的 MEDIA_HIFI 房间
+                    Log.d("VoiceAssistant", "创建 MEDIA_HIFI 房间...")
+                    room = createRoomInstance(AudioMode.MEDIA_HIFI)
+                    
+                    // 延迟 1.5 秒让房间初始化
+                    Log.d("VoiceAssistant", "延迟 1.5 秒让房间初始化...")
+                    delay(1500)
+                    
+                    // fallback：应用 CALL_SPEAKER 音频状态，触发硬件 AEC
+                    Log.d("VoiceAssistant", "应用 CALL_SPEAKER 音频状态（fallback）...")
+                    currentMode = mode
+                    applyAudioState(mode)
+                    
+                    Log.d("VoiceAssistant", "========== 切换成功！总耗时：${System.currentTimeMillis() - startTime}ms ==========")
+                    return
+                } catch (e: Exception) {
+                    Log.e("VoiceAssistant", "获取 token 失败，使用 fallback: ${e.message}")
+                    // 失败则直接 fallback
+                }
+            }
+            
+            // 从 MEDIA_HIFI 切回 或 token 获取失败：直接 fallback，复用服务器房间
+            Log.d("VoiceAssistant", "CALL_SPEAKER 模式，fallback 复用房间...")
+            
+            if (isFromEarpiece) {
+                // 从听筒切回但 token 失败，先重建本地房间
                 room.disconnect()
                 room.release()
                 room = createRoomInstance(AudioMode.MEDIA_HIFI)
-                
-                // 等待 1.5 秒再 fallback
                 delay(1500)
             }
             
-            // 强制 fallback（不获取 token）
-            Log.d("VoiceAssistant", "CALL_SPEAKER 模式，强制 fallback...")
             currentMode = mode
             applyAudioState(mode)
             
