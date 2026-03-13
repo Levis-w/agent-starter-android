@@ -161,7 +161,7 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
                 room = createRoomInstance(AudioMode.MEDIA_HIFI)
                 
                 // 等待 1.5 秒再 fallback
-                delay(2000)
+                delay(1500)
             }
             
             // 强制 fallback（不获取 token）
@@ -193,23 +193,28 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
             Log.d("VoiceAssistant", "[4] 更新 TokenSource...")
             tokenSource = io.livekit.android.token.TokenSource.fromLiteral(connectionUrl, connectionToken)
             
-            Log.d("VoiceAssistant", "[5] 应用音频状态...")
-            val audioStart = System.currentTimeMillis()
-            applyAudioState(mode)
-            Log.d("VoiceAssistant", "[5] 音频状态完成，耗时：${System.currentTimeMillis() - audioStart}ms")
+            Log.d("VoiceAssistant", "[5] 创建新 room...")
+            val newRoom = createRoomInstance(mode)
             
-            Log.d("VoiceAssistant", "[6] 更新当前模式...")
-            currentMode = mode
-            
-            Log.d("VoiceAssistant", "[7] 销毁旧 room...")
+            Log.d("VoiceAssistant", "[6] 销毁旧 room...")
             val roomStart = System.currentTimeMillis()
             room.disconnect()
             Log.d("VoiceAssistant", "  disconnect 耗时：${System.currentTimeMillis() - roomStart}ms")
             room.release()
             
-            Log.d("VoiceAssistant", "[7] 创建新 room...")
-            room = createRoomInstance(mode)
-            Log.d("VoiceAssistant", "[7] room 完成，耗时：${System.currentTimeMillis() - roomStart}ms")
+            Log.d("VoiceAssistant", "[7] 更新为新 room...")
+            room = newRoom
+            
+            Log.d("VoiceAssistant", "[8] 延迟 1.5 秒...")
+            delay(1500)
+            
+            Log.d("VoiceAssistant", "[9] 应用音频状态...")
+            val audioStart = System.currentTimeMillis()
+            applyAudioState(mode)
+            Log.d("VoiceAssistant", "[9] 音频状态完成，耗时：${System.currentTimeMillis() - audioStart}ms")
+            
+            Log.d("VoiceAssistant", "[10] 更新当前模式...")
+            currentMode = mode
             
             Log.d("VoiceAssistant", "========== 切换成功！总耗时：${System.currentTimeMillis() - startTime}ms ==========")
         } catch (e: Exception) {
