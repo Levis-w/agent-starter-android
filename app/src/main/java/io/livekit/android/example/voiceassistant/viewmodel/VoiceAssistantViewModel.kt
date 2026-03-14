@@ -78,8 +78,8 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
                 javaAudioDeviceModuleCustomizer = { builder ->
                     builder
                         .setAudioSource(MediaRecorder.AudioSource.VOICE_COMMUNICATION)
-                        .setUseHardwareAcousticEchoCanceler(true)
-                        .setUseHardwareNoiseSuppressor(true)
+                        .setUseHardwareAcousticEchoCanceler(false)
+                        .setUseHardwareNoiseSuppressor(false)
                 }
             )
             AudioMode.CALL_SPEAKER, AudioMode.CALL_EARPIECE -> AudioOptions(
