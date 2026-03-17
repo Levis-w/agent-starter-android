@@ -99,6 +99,8 @@ fun ConnectScreen(
                 containerColor = Blue500,
                 contentColor = Color.White
             )
+
+            // 【原按钮 - 媒体模式】
             Button(
                 colors = buttonColors,
                 shape = RoundedCornerShape(20),
@@ -106,12 +108,12 @@ fun ConnectScreen(
                     val route = VoiceAssistantRoute(
                         sandboxId = sandboxID,
                         hardcodedUrl = hardcodedUrl,
-                        hardcodedToken = hardcodedToken
+                        hardcodedToken = hardcodedToken,
+                        startInCallMode = false // 明确传递 false 或不传（使用默认值）
                     )
                     navigateToVoiceAssistant(route)
                 }
             ) {
-
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     AnimatedVisibility(isConnecting) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -125,6 +127,33 @@ fun ConnectScreen(
                     }
                     Text(
                         text = if (isConnecting) "CONNECTING" else "START CALL",
+                        style = TextStyle(
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 2.sp,
+                        )
+                    )
+                }
+            }
+
+            Spacer(Modifier.size(12.dp))
+
+            // 【新增按钮 - 电话模式】
+            Button(
+                colors = buttonColors,
+                shape = RoundedCornerShape(20),
+                onClick = {
+                    val route = VoiceAssistantRoute(
+                        sandboxId = sandboxID,
+                        hardcodedUrl = hardcodedUrl,
+                        hardcodedToken = hardcodedToken,
+                        startInCallMode = true // 关键：明确传递 true 以直接进入电话模式
+                    )
+                    navigateToVoiceAssistant(route)
+                }
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "START CALL (PHONE MODE)",
                         style = TextStyle(
                             fontFamily = FontFamily.Monospace,
                             letterSpacing = 2.sp,
