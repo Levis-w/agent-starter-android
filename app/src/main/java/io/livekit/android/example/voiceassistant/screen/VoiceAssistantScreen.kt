@@ -72,7 +72,9 @@ import kotlinx.serialization.Serializable
 data class VoiceAssistantRoute(
     val sandboxId: String,
     val hardcodedUrl: String,
-    val hardcodedToken: String
+    val hardcodedToken: String,
+    // 【修改】新增 startInCallMode 参数，并提供默认值 false
+    val startInCallMode: Boolean = false
 )
 
 @Composable
@@ -103,7 +105,7 @@ fun VoiceAssistant(
     val canEnableVideo by rememberCanEnableCamera()
 
     val context = LocalContext.current
-    
+
     // 关键修复：使用 key(room) 强制在房间实例变化时重置整个会话状态，保证每个房间的 Session 都是隔离并最新初始化的
     androidx.compose.runtime.key(viewModel.room) {
         val session = rememberSession(
@@ -148,10 +150,10 @@ fun VoiceAssistant(
 
             LaunchedEffect(canEnableMic, requestedAudio) {
                 session.waitUntilConnected()
-                
+
                 // 手动发布音轨以控制 AEC
                 val localParticipant = room.localParticipant
-                
+
                 if (canEnableMic && requestedAudio) {
                     val audioOptions = if (viewModel.currentMode == AudioMode.MEDIA_HIFI) {
                         io.livekit.android.room.track.LocalAudioTrackOptions(
