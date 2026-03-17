@@ -73,7 +73,6 @@ data class VoiceAssistantRoute(
     val sandboxId: String,
     val hardcodedUrl: String,
     val hardcodedToken: String,
-    // 【修改】添加此参数，以便从按钮进入时区分模式
     val startInCallMode: Boolean = false
 )
 
@@ -105,9 +104,7 @@ fun VoiceAssistant(
     val canEnableVideo by rememberCanEnableCamera()
     val context = LocalContext.current
 
-    // 【关键修改】使用 key(viewModel.room)
-    // 当 ViewModel 切换模式并创建新 Room 时，key 会变化，
-    // 这会导致 key 内部的所有状态（包括 session 和 localMedia）重置，保证逻辑正确。
+    // 使用 key 确保 Room 切换时重置所有 Session 状态
     key(viewModel.room) {
         val session = rememberSession(
             tokenSource = viewModel.tokenSource,
@@ -136,12 +133,12 @@ fun VoiceAssistant(
             val room = requireRoom()
             var chatVisible by remember { mutableStateOf(false) }
 
+            // 使用官方 LocalMedia 处理静音
             val localMedia = rememberLocalMedia()
             val isMicEnabled by localMedia::isMicrophoneEnabled
             val isCameraEnabled by localMedia::isCameraEnabled
             val isScreenShareEnabled by localMedia::isScreenShareEnabled
 
-            // 【完全保留原代码的静音逻辑】
             LaunchedEffect(canEnableMic, requestedAudio) {
                 session.waitUntilConnected()
                 localMedia.setMicrophoneEnabled(canEnableMic && requestedAudio)
@@ -223,7 +220,13 @@ fun VoiceAssistant(
                     isChatEnabled = chatVisible,
                     onChatClick = { chatVisible = !chatVisible },
                     onExitClick = onEndCall,
-                    // 【关键】如果你在 ControlBar 中实现了模式切换按钮，请确保 viewModel.switchAudioMode 被正常调用
+                    // 补齐缺少的参数
+                    currentMode = viewModel.currentMode,
+                    onAudioModeChange = { mode ->
+                        coroutineScope.launch {
+                            viewModel.switchAudioMode(mode)
+                        }
+                    },
                     modifier = Modifier.layoutId(LAYOUT_ID_CONTROL_BAR)
                 )
 
@@ -271,4 +274,102 @@ fun VoiceAssistant(
     }
 }
 
-// ... 下面的 getConstraints 和 LAYOUT_ID 完全保持官方原样不变
+// --- 补齐被漏掉的布局 ID 和 辅助函数 ---
+
+private const val LAYOUT_ID_AGENT = "agentVisualizer"
+private const val LAYOUT_ID_CHAT_LOG = "chatLog"
+private const val LAYOUT_ID_CONTROL_BAR = "controlBar"
+private const val LAYOUT_ID_CHAT_BAR = "chatBar"
+private const val LAYOUT_ID_CAMERA = "camera"
+private const val LAYOUT_ID_SCREENSHARE = "screenshare"
+
+private fun getConstraints(chatVisible: Boolean, cameraVisible: Boolean, screenShareVisible: Boolean) = ConstraintSet {
+    val (agentVisualizer, chatLog, controlBar, chatBar, camera, screenShare) = createRefsFor(
+        LAYOUT_ID_AGENT,
+        LAYOUT_ID_CHAT_LOG,
+        LAYOUT_ID_CONTROL_BAR,
+        LAYOUT_ID_CHAT_BAR,
+        LAYOUT_ID_CAMERA,
+        LAYOUT_ID_SCREENSHARE,
+    )
+    val chatTopGuideline = createGuidelineFromTop(0.2f)
+
+    constrain(chatLog) {
+        top.linkTo(chatTopGuideline)
+        bottom.linkTo(chatBar.top)
+        start.linkTo(parent.start)
+        end.linkTo(parent.end)
+        width = Dimension.fillToConstraints
+        height = Dimension.fillToConstraints
+    }
+
+    constrain(chatBar) {
+        bottom.linkTo(controlBar.top, 16.dp)
+        start.linkTo(parent.start, 16.dp)
+        end.linkTo(parent.end, 16.dp)
+        width = Dimension.fillToConstraints
+        height = Dimension.wrapContent
+    }
+
+    constrain(controlBar) {
+        bottom.linkTo(parent.bottom, 10.dp)
+        start.linkTo(parent.start, 16.dp)
+        end.linkTo(parent.end, 16.dp)
+
+        width = Dimension.fillToConstraints
+        height = Dimension.value(60.dp)
+    }
+
+    if (chatVisible) {
+        val chain = createHorizontalChain(agentVisualizer, screenShare, camera, chainStyle = ChainStyle.Spread)
+
+        constrain(chain) {
+            start.linkTo(parent.start)
+            end.linkTo(parent.end)
+        }
+
+        fun ConstrainScope.itemConstraints(visible: Boolean = true) {
+            top.linkTo(parent.top)
+            bottom.linkTo(chatTopGuideline)
+            width = Dimension.percent(0.3f)
+            height = Dimension.fillToConstraints
+            visibility = if (visible) Visibility.Visible else Visibility.Gone
+        }
+        constrain(agentVisualizer) {
+            itemConstraints()
+        }
+        constrain(camera) {
+            itemConstraints(cameraVisible)
+        }
+        constrain(screenShare) {
+            itemConstraints(screenShareVisible)
+        }
+    } else {
+        constrain(agentVisualizer) {
+            top.linkTo(parent.top)
+            bottom.linkTo(parent.bottom)
+            start.linkTo(parent.start)
+            end.linkTo(parent.end)
+            height = Dimension.fillToConstraints
+            width = Dimension.fillToConstraints
+        }
+        constrain(camera) {
+            end.linkTo(parent.end, 16.dp)
+            bottom.linkTo(controlBar.top, 16.dp)
+            width = Dimension.percent(0.25f)
+            height = Dimension.percent(0.2f)
+            visibility = if (cameraVisible) Visibility.Visible else Visibility.Gone
+        }
+        constrain(screenShare) {
+            if (cameraVisible) {
+                end.linkTo(camera.start, 16.dp)
+            } else {
+                end.linkTo(parent.end, 16.dp)
+            }
+            bottom.linkTo(controlBar.top, 16.dp)
+            width = Dimension.percent(0.25f)
+            height = Dimension.percent(0.2f)
+            visibility = if (screenShareVisible) Visibility.Visible else Visibility.Gone
+        }
+    }
+}
