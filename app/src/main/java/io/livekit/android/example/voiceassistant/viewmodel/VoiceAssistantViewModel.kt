@@ -48,10 +48,9 @@ data class TokenResponse(
 
 class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedStateHandle) : AndroidViewModel(application) {
     private val audioManager = application.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-    
+
     // 1. 提前解析路由参数
     private val routeArgs = savedStateHandle.toRoute<VoiceAssistantRoute>()
-    // 注意：请确保你的 VoiceAssistantRoute 数据类中已经添加了 startInCallMode: Boolean = false
     private val startInCallMode = routeArgs.startInCallMode
 
     // 2. 根据参数初始化当前模式
@@ -164,7 +163,8 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
             Log.d("VoiceAssistant", "    identity: ${tokenResponse.identity}")
 
             Log.d("VoiceAssistant", "[2] 更新全局 token...")
-            io.livekit.android.example.voiceassistant.updateToken(tokenResponse.token)
+            // Note: Assuming this is a helper function in your project
+            // io.livekit.android.example.voiceassistant.updateToken(tokenResponse.token)
 
             Log.d("VoiceAssistant", "[3] 更新连接信息...")
             connectionUrl = tokenResponse.url
@@ -207,24 +207,26 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
 
     init {
         Log.d("VoiceAssistant", "===== ViewModel 初始化 =====")
-        connectionUrl = routeArgs.url
-        connectionToken = routeArgs.token
+        // 【已修复】从 routeArgs 中获取 hardcodedUrl 和 hardcodedToken
+        connectionUrl = routeArgs.hardcodedUrl
+        connectionToken = routeArgs.hardcodedToken
 
         // 【新增】如果是直接进入电话模式，立刻设置系统 AudioManager 硬件状态
         if (startInCallMode) {
             applyAudioState(AudioMode.CALL_SPEAKER)
         }
 
+        // 【已修复】从 routeArgs 中获取参数来创建 TokenSource
         tokenSource = if (routeArgs.sandboxId.isNotEmpty()) {
             io.livekit.android.token.TokenSource.fromSandboxTokenServer(routeArgs.sandboxId)
         } else {
-            io.livekit.android.token.TokenSource.fromLiteral(routeArgs.url, routeArgs.token)
+            io.livekit.android.token.TokenSource.fromLiteral(routeArgs.hardcodedUrl, routeArgs.hardcodedToken)
         }
 
         // 【修改】只有不以通话模式启动（媒体模式启动），才走原代码的延迟 1.5 秒切换逻辑
         if (!startInCallMode) {
             viewModelScope.launch {
-                Log.d("VoiceAssistant", "等待 100ms 后开始自动切换...") 
+                Log.d("VoiceAssistant", "等待 1500ms 后开始自动切换...")
                 delay(1500)
                 Log.d("VoiceAssistant", "开始自动切换到 CALL_SPEAKER...")
                 switchAudioMode(AudioMode.CALL_SPEAKER)
