@@ -63,18 +63,17 @@ import io.livekit.android.example.voiceassistant.ui.ChatLog
 import io.livekit.android.example.voiceassistant.ui.ControlBar
 import io.livekit.android.example.voiceassistant.viewmodel.VoiceAssistantViewModel
 import io.livekit.android.example.voiceassistant.viewmodel.AudioMode
-import io.livekit.android.room.track.LocalAudioTrackOptions
 import io.livekit.android.room.track.screencapture.ScreenCaptureParams
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 
-// 确保这里的路由定义与你项目中的保持一致
 @Serializable
 data class VoiceAssistantRoute(
     val sandboxId: String,
     val hardcodedUrl: String,
     val hardcodedToken: String,
+    // 【修改】新增 startInCallMode 参数，并提供默认值 false
     val startInCallMode: Boolean = false
 )
 
@@ -107,6 +106,7 @@ fun VoiceAssistant(
 
     val context = LocalContext.current
 
+    // 关键修复：使用 key(room) 强制在房间实例变化时重置整个会话状态，保证每个房间的 Session 都是隔离并最新初始化的
     androidx.compose.runtime.key(viewModel.room) {
         val session = rememberSession(
             tokenSource = viewModel.tokenSource,
@@ -116,6 +116,8 @@ fun VoiceAssistant(
         )
         SessionScope(session = session) { session ->
 
+            // Start the session when we have at least microphone permissions.
+            // Permission removals kill the app, so this is a one-way transition.
             LaunchedEffect(canEnableMic) {
                 if (!canEnableMic) {
                     return@LaunchedEffect
@@ -123,12 +125,14 @@ fun VoiceAssistant(
 
                 val result = session.start()
 
+                // Handle if the session fails to connect.
                 if (result.isFailure) {
                     Toast.makeText(context, "Error connecting to the session.", Toast.LENGTH_SHORT).show()
                     onEndCall()
                 }
             }
 
+            // End the session when leaving the screen.
             DisposableEffect(Unit) {
                 onDispose {
                     session.end()
@@ -138,46 +142,53 @@ fun VoiceAssistant(
             val room = requireRoom()
             var chatVisible by remember { mutableStateOf(false) }
 
+            // LocalMedia provides state information about the user's local devices
             val localMedia = rememberLocalMedia()
             val isMicEnabled by localMedia::isMicrophoneEnabled
             val isCameraEnabled by localMedia::isCameraEnabled
             val isScreenShareEnabled by localMedia::isScreenShareEnabled
 
-            // ========================= 【关键修改处】 =========================
-            // 这个 LaunchedEffect 现在会同时处理开启和关闭麦克风的逻辑
             LaunchedEffect(canEnableMic, requestedAudio) {
                 session.waitUntilConnected()
+
+                // 手动发布音轨以控制 AEC
                 val localParticipant = room.localParticipant
 
-                localParticipant.audioTrackPublications.forEach { pub ->
-                    pub.track?.let { localParticipant.unpublishTrack(it) }
-                }
-
-                        // 第二步：开启逻辑
                 if (canEnableMic && requestedAudio) {
-                        // 这里的 audioOptions 定义保持不变（区分 MEDIA_HIFI 和其他模式）
-                   val audioOptions = if (viewModel.currentMode == AudioMode.MEDIA_HIFI) {
-                       LocalAudioTrackOptions(echoCancellation = true, /* ...其他参数 */)
-                   } else {
-                       LocalAudioTrackOptions(echoCancellation = false, /* ...其他参数 */)
-                   }
-
-                      // 手动发布音轨（这在所有 SDK 版本中都是通用的）
-                   val track = localParticipant.createAudioTrack("microphone", options = audioOptions)
-                   localParticipant.publishAudioTrack(track)
+                    val audioOptions = if (viewModel.currentMode == AudioMode.MEDIA_HIFI) {
+                        io.livekit.android.room.track.LocalAudioTrackOptions(
+                            echoCancellation = true,
+                            noiseSuppression = true,
+                            autoGainControl = false,
+                            highPassFilter = true,
+                            typingNoiseDetection = true
+                        )
+                    } else {
+                        io.livekit.android.room.track.LocalAudioTrackOptions(
+                            echoCancellation = false, // 硬件处理模式
+                            noiseSuppression = false,
+                            autoGainControl = false,
+                            highPassFilter = false,
+                            typingNoiseDetection = false
+                        )
+                    }
+                    val track = localParticipant.createAudioTrack("microphone", options = audioOptions)
+                    localParticipant.publishAudioTrack(track)
                 }
-}
-            // ======================= 【修改结束】 =========================
+            }
 
             LaunchedEffect(canEnableVideo, requestedVideo) {
                 session.waitUntilConnected()
                 localMedia.setCameraEnabled(canEnableVideo && requestedVideo)
             }
 
+            // SessionMessages handles all transcriptions and chat messages
             val sessionMessages = rememberSessionMessages()
-            val agent = rememberAgent()
-            val constraints = getConstraints(chatVisible, isCameraEnabled, isScreenShareEnabled)
 
+            // Agent provides state information about the agent participant.
+            val agent = rememberAgent()
+
+            val constraints = getConstraints(chatVisible, isCameraEnabled, isScreenShareEnabled)
             ConstraintLayout(
                 constraintSet = constraints,
                 modifier = modifier,
@@ -206,6 +217,7 @@ fun VoiceAssistant(
                     modifier = Modifier.layoutId(LAYOUT_ID_CHAT_BAR)
                 )
 
+                // Amplitude visualization of the Assistant's voice track.
                 AgentVisualization(
                     agent = agent,
                     modifier = Modifier
@@ -222,6 +234,7 @@ fun VoiceAssistant(
                             return@rememberLauncherForActivityResult
                         }
                         coroutineScope.launch {
+                            // Agents only support one video stream at a time.
                             requestedVideo = false
                             localMedia.setScreenShareEnabled(true, ScreenCaptureParams(data))
                         }
@@ -235,12 +248,14 @@ fun VoiceAssistant(
                     onCameraClick = {
                         requestedVideo = !requestedVideo
                         if (requestedVideo) {
+                            // Agents only support one video stream at a time.
                             coroutineScope.launch { localMedia.setScreenShareEnabled(false) }
                         }
                     },
                     isScreenShareEnabled = isScreenShareEnabled,
                     onScreenShareClick = {
                         if (!isScreenShareEnabled) {
+                            // Screenshare permission needs to be requested each time.
                             val mediaProjectionManager = context.getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
                             screenSharePermissionLauncher.launch(mediaProjectionManager.createScreenCaptureIntent())
                         } else {
