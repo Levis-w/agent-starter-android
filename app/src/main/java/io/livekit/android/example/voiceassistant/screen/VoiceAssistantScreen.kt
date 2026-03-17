@@ -149,33 +149,24 @@ fun VoiceAssistant(
                 session.waitUntilConnected()
                 val localParticipant = room.localParticipant
 
-                // 同样根据 ViewModel 的当前模式决定音频参数
-                val audioOptions = if (viewModel.currentMode == AudioMode.MEDIA_HIFI) {
-                    LocalAudioTrackOptions(
-                        echoCancellation = true,
-                        noiseSuppression = true,
-                        autoGainControl = false,
-                        highPassFilter = true,
-                        typingNoiseDetection = true
-                    )
-                } else {
-                    LocalAudioTrackOptions(
-                        echoCancellation = false, // 硬件处理模式
-                        noiseSuppression = false,
-                        autoGainControl = false,
-                        highPassFilter = false,
-                        typingNoiseDetection = false
-                    )
+                localParticipant.audioTrackPublications.forEach { pub ->
+                    pub.track?.let { localParticipant.unpublishTrack(it) }
                 }
 
-                // 使用 setMicrophoneEnabled 方法。
-                // 当 requestedAudio 为 true 时，它会使用你提供的 audioOptions 来发布音轨。
-                // 当 requestedAudio 为 false 时，它会自动取消发布音轨，从而实现静音。
-                localParticipant.setMicrophoneEnabled(
-                    enabled = canEnableMic && requestedAudio,
-                    audioOptions = audioOptions,
-                )
-            }
+                        // 第二步：开启逻辑
+                if (canEnableMic && requestedAudio) {
+                        // 这里的 audioOptions 定义保持不变（区分 MEDIA_HIFI 和其他模式）
+                   val audioOptions = if (viewModel.currentMode == AudioMode.MEDIA_HIFI) {
+                       LocalAudioTrackOptions(echoCancellation = true, /* ...其他参数 */)
+                   } else {
+                       LocalAudioTrackOptions(echoCancellation = false, /* ...其他参数 */)
+                   }
+
+                      // 手动发布音轨（这在所有 SDK 版本中都是通用的）
+                   val track = localParticipant.createAudioTrack("microphone", options = audioOptions)
+                   localParticipant.publishAudioTrack(track)
+                }
+}
             // ======================= 【修改结束】 =========================
 
             LaunchedEffect(canEnableVideo, requestedVideo) {
