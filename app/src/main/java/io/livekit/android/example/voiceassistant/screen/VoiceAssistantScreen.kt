@@ -1,5 +1,5 @@
 package io.livekit.android.example.voiceassistant.screen
-import io.livekit.android.room.participant.setMicrophoneEnabled
+
 import android.app.Activity
 import android.content.Context.MEDIA_PROJECTION_SERVICE
 import android.media.projection.MediaProjectionManager
