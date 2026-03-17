@@ -19,10 +19,6 @@ import io.livekit.android.LiveKitOverrides
 import io.livekit.android.audio.NoAudioHandler
 import io.livekit.android.example.voiceassistant.screen.VoiceAssistantRoute
 import io.livekit.android.room.Room
-import io.livekit.android.room.participant.LocalParticipant
-import io.livekit.android.room.track.LocalAudioTrack
-import io.livekit.android.room.track.LocalAudioTrackOptions
-import io.livekit.android.room.track.Track
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeout
@@ -52,7 +48,14 @@ data class TokenResponse(
 
 class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedStateHandle) : AndroidViewModel(application) {
     private val audioManager = application.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-    var currentMode by mutableStateOf(AudioMode.MEDIA_HIFI)
+    
+    // 1. 提前解析路由参数
+    private val routeArgs = savedStateHandle.toRoute<VoiceAssistantRoute>()
+    // 注意：请确保你的 VoiceAssistantRoute 数据类中已经添加了 startInCallMode: Boolean = false
+    private val startInCallMode = routeArgs.startInCallMode
+
+    // 2. 根据参数初始化当前模式
+    var currentMode by mutableStateOf(if (startInCallMode) AudioMode.CALL_SPEAKER else AudioMode.MEDIA_HIFI)
 
     private val httpClient = OkHttpClient.Builder()
         .connectTimeout(500, java.util.concurrent.TimeUnit.MILLISECONDS)
@@ -65,7 +68,8 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
     private var connectionUrl: String = ""
     private var connectionToken: String = ""
 
-    var room: Room by mutableStateOf(createRoomInstance(AudioMode.MEDIA_HIFI))
+    // 3. 根据参数初始化 Room
+    var room: Room by mutableStateOf(createRoomInstance(if (startInCallMode) AudioMode.CALL_SPEAKER else AudioMode.MEDIA_HIFI))
         private set
 
     private fun createRoomInstance(mode: AudioMode): Room {
@@ -196,27 +200,35 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
             applyAudioState(mode)
             viewModelScope.launch {
                 delay(800)
-            Log.d("VoiceAssistant", "fallback 完成，总耗时：${System.currentTimeMillis() - startTime}ms")
+                Log.d("VoiceAssistant", "fallback 完成，总耗时：${System.currentTimeMillis() - startTime}ms")
+            }
         }
-      }
     }
+
     init {
         Log.d("VoiceAssistant", "===== ViewModel 初始化 =====")
-        val (sandboxId, url, token) = savedStateHandle.toRoute<VoiceAssistantRoute>()
-        connectionUrl = url
-        connectionToken = token
+        connectionUrl = routeArgs.url
+        connectionToken = routeArgs.token
 
-        tokenSource = if (sandboxId.isNotEmpty()) {
-            io.livekit.android.token.TokenSource.fromSandboxTokenServer(sandboxId)
-        } else {
-            io.livekit.android.token.TokenSource.fromLiteral(url, token)
+        // 【新增】如果是直接进入电话模式，立刻设置系统 AudioManager 硬件状态
+        if (startInCallMode) {
+            applyAudioState(AudioMode.CALL_SPEAKER)
         }
 
-        viewModelScope.launch {
-            Log.d("VoiceAssistant", "等待 100ms 后开始自动切换...")
-            delay(1500)
-            Log.d("VoiceAssistant", "开始自动切换到 CALL_SPEAKER...")
-            switchAudioMode(AudioMode.CALL_SPEAKER)
+        tokenSource = if (routeArgs.sandboxId.isNotEmpty()) {
+            io.livekit.android.token.TokenSource.fromSandboxTokenServer(routeArgs.sandboxId)
+        } else {
+            io.livekit.android.token.TokenSource.fromLiteral(routeArgs.url, routeArgs.token)
+        }
+
+        // 【修改】只有不以通话模式启动（媒体模式启动），才走原代码的延迟 1.5 秒切换逻辑
+        if (!startInCallMode) {
+            viewModelScope.launch {
+                Log.d("VoiceAssistant", "等待 100ms 后开始自动切换...") 
+                delay(1500)
+                Log.d("VoiceAssistant", "开始自动切换到 CALL_SPEAKER...")
+                switchAudioMode(AudioMode.CALL_SPEAKER)
+            }
         }
     }
 
