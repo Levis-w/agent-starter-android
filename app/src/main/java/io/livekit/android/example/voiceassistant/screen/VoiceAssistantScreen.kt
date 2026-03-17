@@ -173,8 +173,7 @@ fun VoiceAssistant(
                 // 当 requestedAudio 为 false 时，它会自动取消发布音轨，从而实现静音。
                 localParticipant.setMicrophoneEnabled(
                     enabled = canEnableMic && requestedAudio,
-                    options = audioOptions,
-                    name = "microphone"
+                    audioOptions = audioOptions,
                 )
             }
             // ======================= 【修改结束】 =========================
