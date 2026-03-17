@@ -9,7 +9,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
@@ -104,7 +103,6 @@ fun VoiceAssistant(
     val canEnableVideo by rememberCanEnableCamera()
     val context = LocalContext.current
 
-    // 使用 key 确保 Room 切换时重置所有 Session 状态
     key(viewModel.room) {
         val session = rememberSession(
             tokenSource = viewModel.tokenSource,
@@ -132,8 +130,6 @@ fun VoiceAssistant(
 
             val room = requireRoom()
             var chatVisible by remember { mutableStateOf(false) }
-
-            // 使用官方 LocalMedia 处理静音
             val localMedia = rememberLocalMedia()
             val isMicEnabled by localMedia::isMicrophoneEnabled
             val isCameraEnabled by localMedia::isCameraEnabled
@@ -177,13 +173,12 @@ fun VoiceAssistant(
                     modifier = Modifier.layoutId(LAYOUT_ID_CHAT_BAR)
                 )
 
-                val agentBorderAlpha by animateFloatAsState(if (chatVisible) 1f else 0f, label = "agentBorderAlpha")
+                // 【修正】去掉了 border 逻辑，恢复到最干净的原始状态
                 AgentVisualization(
                     agent = agent,
                     modifier = Modifier
                         .layoutId(LAYOUT_ID_AGENT)
                         .clip(RoundedCornerShape(8.dp))
-                        .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = agentBorderAlpha), RoundedCornerShape(8.dp))
                 )
 
                 val screenSharePermissionLauncher =
@@ -220,7 +215,6 @@ fun VoiceAssistant(
                     isChatEnabled = chatVisible,
                     onChatClick = { chatVisible = !chatVisible },
                     onExitClick = onEndCall,
-                    // 补齐缺少的参数
                     currentMode = viewModel.currentMode,
                     onAudioModeChange = { mode ->
                         coroutineScope.launch {
@@ -273,8 +267,6 @@ fun VoiceAssistant(
         }
     }
 }
-
-// --- 补齐被漏掉的布局 ID 和 辅助函数 ---
 
 private const val LAYOUT_ID_AGENT = "agentVisualizer"
 private const val LAYOUT_ID_CHAT_LOG = "chatLog"
