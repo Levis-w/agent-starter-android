@@ -71,21 +71,27 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
         private set
 
     private fun createRoomInstance(mode: AudioMode): Room {
+        // 【核心区分逻辑】
+        // 只有当明确从“电话模式”入口进入时，且当前是通话枚举，才允许 SDK 自动管理。
+        // 如果是从“媒体模式”进入（startInCallMode = false），则屏蔽 SDK 自动管理，保留你的卡 Bug 环境。
+        val useSdkAutoRouting = startInCallMode && (mode == AudioMode.CALL_SPEAKER || mode == AudioMode.CALL_EARPIECE)
+
         val audioOptions = when (mode) {
             AudioMode.MEDIA_HIFI -> AudioOptions(
                 audioOutputType = AudioType.MediaAudioType(),
-                // 【媒体模式】完全手动控制，屏蔽 SDK 的音频路由
-                audioHandler = NoAudioHandler(),
+                audioHandler = NoAudioHandler(), // 永远纯手动
                 javaAudioDeviceModuleCustomizer = { builder ->
                     builder
                         .setAudioSource(MediaRecorder.AudioSource.CAMCORDER)
-                        .setUseHardwareAcousticEchoCanceler(false)
-                        .setUseHardwareNoiseSuppressor(false)
+                        .setUseHardwareAcousticEchoCanceler(false) // 恢复你原版的 false
+                        .setUseHardwareNoiseSuppressor(false)      // 恢复你原版的 false
                 }
             )
             AudioMode.CALL_SPEAKER, AudioMode.CALL_EARPIECE -> AudioOptions(
                 audioOutputType = AudioType.CallAudioType(),
-                // 【电话模式】去掉 NoAudioHandler()，交由 SDK 的 AudioSwitchHandler 自动管理（包括蓝牙/有线耳机/扬声器切换）
+                // 如果是媒体模式入口 1.5s 后切过来的，这里依然使用 NoAudioHandler() 保持纯手动！
+                // 如果是电话模式入口进来的，这里就是 null，由 SDK 接管处理蓝牙。
+                audioHandler = if (useSdkAutoRouting) null else NoAudioHandler(),
                 javaAudioDeviceModuleCustomizer = { builder ->
                     builder
                         .setAudioSource(MediaRecorder.AudioSource.VOICE_COMMUNICATION)
@@ -98,18 +104,26 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
     }
 
     private fun applyAudioState(mode: AudioMode) {
+        val useSdkAutoRouting = startInCallMode && (mode == AudioMode.CALL_SPEAKER || mode == AudioMode.CALL_EARPIECE)
+
+        if (useSdkAutoRouting) {
+            // 【电话入口专属】交由 SDK 自动管理蓝牙/听筒/扬声器，清空手动逻辑防止冲突
+            return
+        }
+
+        // 【媒体入口专属】无论在哪个状态，原封不动执行你最初始的全部手动逻辑！
         when (mode) {
             AudioMode.MEDIA_HIFI -> {
-                // 【媒体模式】全部手动控制
                 audioManager.mode = AudioManager.MODE_NORMAL
                 audioManager.isSpeakerphoneOn = true
-                Log.d("VoiceAssistant", "已切换为 MEDIA_HIFI：手动设置为 MODE_NORMAL 且开启扬声器")
             }
-            AudioMode.CALL_SPEAKER, AudioMode.CALL_EARPIECE -> {
-                // 【电话模式】由 SDK 自动接管
-                // SDK 会自动设置 MODE_IN_COMMUNICATION，并根据是否有蓝牙耳机自动路由音频。
-                // ⚠️ 此处清空原有手动逻辑，避免与 SDK 抢夺控制权导致蓝牙没声音。
-                Log.d("VoiceAssistant", "已切换为通话模式：音频路由已交由 SDK 自动管理")
+            AudioMode.CALL_SPEAKER -> {
+                audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+                audioManager.isSpeakerphoneOn = true
+            }
+            AudioMode.CALL_EARPIECE -> {
+                audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+                audioManager.isSpeakerphoneOn = false
             }
         }
     }
@@ -123,7 +137,8 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
                     .post(json.toRequestBody("application/json".toMediaType()))
                     .build()
 
-                withTimeout(50) { // 这里原先是 50 毫秒，可能有误，我顺手改成了合理的 5000 毫秒以防超时异常
+                // 保留你的 50 毫秒设置
+                withTimeout(50) {
                     val response = httpClient.newCall(request).execute()
                     if (!response.isSuccessful) {
                         throw Exception("Failed to get token: ${response.code}")
@@ -163,8 +178,6 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
             Log.d("VoiceAssistant", "    identity: ${tokenResponse.identity}")
 
             Log.d("VoiceAssistant", "[2] 更新全局 token...")
-            // Note: Assuming this is a helper function in your project
-            // io.livekit.android.example.voiceassistant.updateToken(tokenResponse.token)
 
             Log.d("VoiceAssistant", "[3] 更新连接信息...")
             connectionUrl = tokenResponse.url
