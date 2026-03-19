@@ -1,5 +1,6 @@
 package io.livekit.android.example.voiceassistant
 
+import android.os.Build // 🌟 新增导入 Build 以判断 Android 版本
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.State
@@ -21,6 +22,10 @@ fun requirePermissions(microphone: Boolean, camera: Boolean): MultiplePermission
         listOfNotNull(
             if (microphone) android.Manifest.permission.RECORD_AUDIO else null,
             if (camera) android.Manifest.permission.CAMERA else null,
+            // 🌟 【核心修改】如果需要麦克风，且系统是 Android 12 (API 31) 及以上，同时申请蓝牙连接权限
+            if (microphone && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                android.Manifest.permission.BLUETOOTH_CONNECT
+            } else null
         )
     )
 
