@@ -71,9 +71,9 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
         private set
 
     private fun createRoomInstance(mode: AudioMode): Room {
-        // 【核心区分逻辑】
-        // 只有当明确从“电话模式”入口进入时，且当前是通话枚举，才允许 SDK 自动管理。
-        // 如果是从“媒体模式”进入（startInCallMode = false），则屏蔽 SDK 自动管理，保留你的卡 Bug 环境。
+        // 【核心隔离逻辑】
+        // 如果是通过电话模式进入，允许 SDK 自动管理以便支持蓝牙等路由。
+        // 如果是通过媒体模式进入，完全屏蔽 SDK 自动管理，使用你原本的手动逻辑。
         val useSdkAutoRouting = startInCallMode && (mode == AudioMode.CALL_SPEAKER || mode == AudioMode.CALL_EARPIECE)
 
         val audioOptions = when (mode) {
@@ -83,14 +83,13 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
                 javaAudioDeviceModuleCustomizer = { builder ->
                     builder
                         .setAudioSource(MediaRecorder.AudioSource.CAMCORDER)
-                        .setUseHardwareAcousticEchoCanceler(false) // 恢复你原版的 false
-                        .setUseHardwareNoiseSuppressor(false)      // 恢复你原版的 false
+                        .setUseHardwareAcousticEchoCanceler(false)
+                        .setUseHardwareNoiseSuppressor(false)
                 }
             )
             AudioMode.CALL_SPEAKER, AudioMode.CALL_EARPIECE -> AudioOptions(
                 audioOutputType = AudioType.CallAudioType(),
-                // 如果是媒体模式入口 1.5s 后切过来的，这里依然使用 NoAudioHandler() 保持纯手动！
-                // 如果是电话模式入口进来的，这里就是 null，由 SDK 接管处理蓝牙。
+                // 如果启用了 SDK 自动路由，传入 null 交由 SDK 管理，否则使用 NoAudioHandler() 保持纯手动！
                 audioHandler = if (useSdkAutoRouting) null else NoAudioHandler(),
                 javaAudioDeviceModuleCustomizer = { builder ->
                     builder
@@ -107,7 +106,9 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
         val useSdkAutoRouting = startInCallMode && (mode == AudioMode.CALL_SPEAKER || mode == AudioMode.CALL_EARPIECE)
 
         if (useSdkAutoRouting) {
-            // 【电话入口专属】交由 SDK 自动管理蓝牙/听筒/扬声器，清空手动逻辑防止冲突
+            // 【关键修复】：即便是交给 SDK 管理路由（如蓝牙），我们依然必须“提前”将系统切入通话模式！
+            // 这样稍后创建 LiveKit Room 时，底层的 WebRTC 引擎才能检测到当前为通话状态，从而成功挂载并开启硬件 AEC。
+            audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
             return
         }
 
@@ -137,7 +138,7 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
                     .post(json.toRequestBody("application/json".toMediaType()))
                     .build()
 
-                // 保留你的 50 毫秒设置
+                // 保持原有的 50ms 超时设置
                 withTimeout(50) {
                     val response = httpClient.newCall(request).execute()
                     if (!response.isSuccessful) {
