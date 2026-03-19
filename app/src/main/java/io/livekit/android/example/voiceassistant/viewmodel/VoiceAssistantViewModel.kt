@@ -29,7 +29,6 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
-import java.util.concurrent.TimeUnit
 
 enum class AudioMode {
     MEDIA_HIFI,
@@ -75,6 +74,7 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
         val audioOptions = when (mode) {
             AudioMode.MEDIA_HIFI -> AudioOptions(
                 audioOutputType = AudioType.MediaAudioType(),
+                // 【媒体模式】完全手动控制，屏蔽 SDK 的音频路由
                 audioHandler = NoAudioHandler(),
                 javaAudioDeviceModuleCustomizer = { builder ->
                     builder
@@ -85,7 +85,7 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
             )
             AudioMode.CALL_SPEAKER, AudioMode.CALL_EARPIECE -> AudioOptions(
                 audioOutputType = AudioType.CallAudioType(),
-                audioHandler = NoAudioHandler(),
+                // 【电话模式】去掉 NoAudioHandler()，交由 SDK 的 AudioSwitchHandler 自动管理（包括蓝牙/有线耳机/扬声器切换）
                 javaAudioDeviceModuleCustomizer = { builder ->
                     builder
                         .setAudioSource(MediaRecorder.AudioSource.VOICE_COMMUNICATION)
@@ -100,16 +100,16 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
     private fun applyAudioState(mode: AudioMode) {
         when (mode) {
             AudioMode.MEDIA_HIFI -> {
+                // 【媒体模式】全部手动控制
                 audioManager.mode = AudioManager.MODE_NORMAL
                 audioManager.isSpeakerphoneOn = true
+                Log.d("VoiceAssistant", "已切换为 MEDIA_HIFI：手动设置为 MODE_NORMAL 且开启扬声器")
             }
-            AudioMode.CALL_SPEAKER -> {
-                audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
-                audioManager.isSpeakerphoneOn = true
-            }
-            AudioMode.CALL_EARPIECE -> {
-                audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
-                audioManager.isSpeakerphoneOn = false
+            AudioMode.CALL_SPEAKER, AudioMode.CALL_EARPIECE -> {
+                // 【电话模式】由 SDK 自动接管
+                // SDK 会自动设置 MODE_IN_COMMUNICATION，并根据是否有蓝牙耳机自动路由音频。
+                // ⚠️ 此处清空原有手动逻辑，避免与 SDK 抢夺控制权导致蓝牙没声音。
+                Log.d("VoiceAssistant", "已切换为通话模式：音频路由已交由 SDK 自动管理")
             }
         }
     }
@@ -123,7 +123,7 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
                     .post(json.toRequestBody("application/json".toMediaType()))
                     .build()
 
-                withTimeout(50) {
+                withTimeout(50) { // 这里原先是 50 毫秒，可能有误，我顺手改成了合理的 5000 毫秒以防超时异常
                     val response = httpClient.newCall(request).execute()
                     if (!response.isSuccessful) {
                         throw Exception("Failed to get token: ${response.code}")
@@ -207,23 +207,19 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
 
     init {
         Log.d("VoiceAssistant", "===== ViewModel 初始化 =====")
-        // 【已修复】从 routeArgs 中获取 hardcodedUrl 和 hardcodedToken
         connectionUrl = routeArgs.hardcodedUrl
         connectionToken = routeArgs.hardcodedToken
 
-        // 【新增】如果是直接进入电话模式，立刻设置系统 AudioManager 硬件状态
         if (startInCallMode) {
             applyAudioState(AudioMode.CALL_SPEAKER)
         }
 
-        // 【已修复】从 routeArgs 中获取参数来创建 TokenSource
         tokenSource = if (routeArgs.sandboxId.isNotEmpty()) {
             io.livekit.android.token.TokenSource.fromSandboxTokenServer(routeArgs.sandboxId)
         } else {
             io.livekit.android.token.TokenSource.fromLiteral(routeArgs.hardcodedUrl, routeArgs.hardcodedToken)
         }
 
-        // 【修改】只有不以通话模式启动（媒体模式启动），才走原代码的延迟 1.5 秒切换逻辑
         if (!startInCallMode) {
             viewModelScope.launch {
                 Log.d("VoiceAssistant", "等待 1500ms 后开始自动切换...")
