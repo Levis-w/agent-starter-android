@@ -71,15 +71,10 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
         private set
 
     private fun createRoomInstance(mode: AudioMode): Room {
-        // 【核心隔离逻辑】
-        // 如果是通过电话模式进入，允许 SDK 自动管理以便支持蓝牙等路由。
-        // 如果是通过媒体模式进入，完全屏蔽 SDK 自动管理，使用你原本的手动逻辑。
-        val useSdkAutoRouting = startInCallMode && (mode == AudioMode.CALL_SPEAKER || mode == AudioMode.CALL_EARPIECE)
-
         val audioOptions = when (mode) {
             AudioMode.MEDIA_HIFI -> AudioOptions(
                 audioOutputType = AudioType.MediaAudioType(),
-                audioHandler = NoAudioHandler(), // 永远纯手动
+                audioHandler = NoAudioHandler(),
                 javaAudioDeviceModuleCustomizer = { builder ->
                     builder
                         .setAudioSource(MediaRecorder.AudioSource.CAMCORDER)
@@ -89,8 +84,7 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
             )
             AudioMode.CALL_SPEAKER, AudioMode.CALL_EARPIECE -> AudioOptions(
                 audioOutputType = AudioType.CallAudioType(),
-                // 如果启用了 SDK 自动路由，传入 null 交由 SDK 管理，否则使用 NoAudioHandler() 保持纯手动！
-                audioHandler = if (useSdkAutoRouting) null else NoAudioHandler(),
+                audioHandler = NoAudioHandler(),
                 javaAudioDeviceModuleCustomizer = { builder ->
                     builder
                         .setAudioSource(MediaRecorder.AudioSource.VOICE_COMMUNICATION)
@@ -103,16 +97,6 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
     }
 
     private fun applyAudioState(mode: AudioMode) {
-        val useSdkAutoRouting = startInCallMode && (mode == AudioMode.CALL_SPEAKER || mode == AudioMode.CALL_EARPIECE)
-
-        if (useSdkAutoRouting) {
-            // 【关键修复】：即便是交给 SDK 管理路由（如蓝牙），我们依然必须“提前”将系统切入通话模式！
-            // 这样稍后创建 LiveKit Room 时，底层的 WebRTC 引擎才能检测到当前为通话状态，从而成功挂载并开启硬件 AEC。
-            audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
-            return
-        }
-
-        // 【媒体入口专属】无论在哪个状态，原封不动执行你最初始的全部手动逻辑！
         when (mode) {
             AudioMode.MEDIA_HIFI -> {
                 audioManager.mode = AudioManager.MODE_NORMAL
@@ -237,7 +221,7 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
         if (!startInCallMode) {
             viewModelScope.launch {
                 Log.d("VoiceAssistant", "等待 1500ms 后开始自动切换...")
-                delay(800)
+                delay(1500)
                 Log.d("VoiceAssistant", "开始自动切换到 CALL_SPEAKER...")
                 switchAudioMode(AudioMode.CALL_SPEAKER)
             }
