@@ -163,6 +163,7 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
             Log.d("VoiceAssistant", "    identity: ${tokenResponse.identity}")
 
             Log.d("VoiceAssistant", "[2] 更新全局 token...")
+            io.livekit.android.example.voiceassistant.updateToken(tokenResponse.token)
 
             Log.d("VoiceAssistant", "[3] 更新连接信息...")
             connectionUrl = tokenResponse.url
@@ -221,7 +222,7 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
         if (!startInCallMode) {
             viewModelScope.launch {
                 Log.d("VoiceAssistant", "等待 1500ms 后开始自动切换...")
-                delay(1000)
+                delay(1500)
                 Log.d("VoiceAssistant", "开始自动切换到 CALL_SPEAKER...")
                 switchAudioMode(AudioMode.CALL_SPEAKER)
             }
