@@ -221,7 +221,7 @@ class VoiceAssistantViewModel(application: Application, savedStateHandle: SavedS
         if (!startInCallMode) {
             viewModelScope.launch {
                 Log.d("VoiceAssistant", "等待 1500ms 后开始自动切换...")
-                delay(1500)
+                delay(1000)
                 Log.d("VoiceAssistant", "开始自动切换到 CALL_SPEAKER...")
                 switchAudioMode(AudioMode.CALL_SPEAKER)
             }
