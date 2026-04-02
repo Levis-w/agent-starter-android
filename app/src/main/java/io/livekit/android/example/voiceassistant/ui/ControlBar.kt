@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PhoneEnabled
 import androidx.compose.material.icons.filled.SettingsVoice
 import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -80,9 +81,14 @@ fun ControlBar(
     onExitClick: () -> Unit,
     currentMode: AudioMode = AudioMode.MEDIA_HIFI,
     onAudioModeChange: (AudioMode) -> Unit,
+    ambientEnabled: Boolean = true,
+    typingEnabled: Boolean = false,
+    onAmbientToggle: (Boolean) -> Unit = {},
+    onTypingToggle: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var audioModeMenuExpanded by remember { mutableStateOf(false) }
+    var soundMenuExpanded by remember { mutableStateOf(false) }
     
     Row(
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -190,6 +196,67 @@ fun ControlBar(
                     },
                     leadingIcon = {
                         Icon(Icons.Default.PhoneEnabled, null)
+                    }
+                )
+            }
+        }
+
+        Spacer(Modifier.size(8.dp))
+
+        // Sound Menu (背景音 + 键盘音)
+        Box {
+            IconButton(
+                onClick = { soundMenuExpanded = true },
+                modifier = Modifier
+                    .height(48.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surface)
+            ) {
+                Icon(
+                    Icons.Default.MusicNote,
+                    "Sound Settings",
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            DropdownMenu(
+                expanded = soundMenuExpanded,
+                onDismissRequest = { soundMenuExpanded = false }
+            ) {
+                DropdownMenuItem(
+                    text = {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.MusicNote, null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("背景音")
+                            Spacer(Modifier.weight(1f))
+                            Text(if (ambientEnabled) "开" else "关")
+                        }
+                    },
+                    onClick = {
+                        onAmbientToggle(!ambientEnabled)
+                        soundMenuExpanded = false
+                    }
+                )
+                DropdownMenuItem(
+                    text = {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Keyboard, null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("键盘音")
+                            Spacer(Modifier.weight(1f))
+                            Text(if (typingEnabled) "开" else "关")
+                        }
+                    },
+                    onClick = {
+                        onTypingToggle(!typingEnabled)
+                        soundMenuExpanded = false
                     }
                 )
             }
