@@ -130,6 +130,8 @@ fun VoiceAssistant(
 
             val room = requireRoom()
             var chatVisible by remember { mutableStateOf(false) }
+            var ambientEnabled by remember { mutableStateOf(true) }
+            var typingEnabled by remember { mutableStateOf(false) }
             val localMedia = rememberLocalMedia()
             val isMicEnabled by localMedia::isMicrophoneEnabled
             val isCameraEnabled by localMedia::isCameraEnabled
@@ -219,6 +221,22 @@ fun VoiceAssistant(
                     onAudioModeChange = { mode ->
                         coroutineScope.launch {
                             viewModel.switchAudioMode(mode)
+                        }
+                    },
+                    ambientEnabled = ambientEnabled,
+                    typingEnabled = typingEnabled,
+                    onAmbientToggle = { enabled ->
+                        ambientEnabled = enabled
+                        coroutineScope.launch {
+                            val payload = "{\"type\": \"ambient_toggle\", \"enabled\": $enabled}"
+                            room.localParticipant.publishData(payload.toByteArray(), io.livekit.android.room.DataPacket.Kind.RELIABLE)
+                        }
+                    },
+                    onTypingToggle = { enabled ->
+                        typingEnabled = enabled
+                        coroutineScope.launch {
+                            val payload = "{\"type\": \"typing_toggle\", \"enabled\": $enabled}"
+                            room.localParticipant.publishData(payload.toByteArray(), io.livekit.android.room.DataPacket.Kind.RELIABLE)
                         }
                     },
                     modifier = Modifier.layoutId(LAYOUT_ID_CONTROL_BAR)
