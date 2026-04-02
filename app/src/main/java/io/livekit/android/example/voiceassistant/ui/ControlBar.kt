@@ -97,17 +97,17 @@ fun ControlBar(
             .clip(RoundedCornerShape(50))
             .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(50))
             .background(MaterialTheme.colorScheme.background.copy(alpha = 0.8f))
-            .padding(horizontal = 20.dp)
+            .padding(horizontal = 12.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .clickable(onClick = onMicClick)
-                .height(48.dp)
-                .weight(1f)
+                .height(40.dp)
+                .width(100.dp)
                 .enabledButtonModifier(isMicEnabled)
         ) {
-            Spacer(Modifier.size(8.dp))
+            Spacer(Modifier.size(4.dp))
             
             val micIcon = if (isMicEnabled) {
                 Icons.Default.Mic
@@ -120,21 +120,21 @@ fun ControlBar(
                 modifier = Modifier.size(20.dp)
             )
             
-            Spacer(Modifier.size(8.dp))
+            Spacer(Modifier.size(4.dp))
             
               if (isMicEnabled && localAudioTrack != null) {
                   AudioBarVisualizer(
                       audioTrackRef = localAudioTrack,
                       modifier = Modifier
                           .fillMaxWidth()
-                          .height(16.dp),
+                          .height(12.dp),
                       barCount = 4
                  )
             } else {
                 Spacer(Modifier.weight(1f))
             }
             
-            Spacer(Modifier.size(8.dp))
+            Spacer(Modifier.size(4.dp))
         }
         
         Box {
@@ -142,10 +142,10 @@ fun ControlBar(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .clickable { audioModeMenuExpanded = true }
-                    .height(48.dp)
+                    .height(40.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(MaterialTheme.colorScheme.surface)
-                    .padding(horizontal = 8.dp)
+                    .padding(horizontal = 6.dp)
             ) {
                 val modeIcon = when (currentMode) {
                     AudioMode.MEDIA_HIFI -> Icons.Default.MusicNote
@@ -201,14 +201,14 @@ fun ControlBar(
             }
         }
 
-        Spacer(Modifier.size(8.dp))
+        Spacer(Modifier.size(4.dp))
 
         // Sound Menu (背景音 + 键盘音)
         Box {
             IconButton(
                 onClick = { soundMenuExpanded = true },
                 modifier = Modifier
-                    .height(48.dp)
+                    .height(40.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(MaterialTheme.colorScheme.surface)
             ) {
@@ -262,12 +262,12 @@ fun ControlBar(
             }
         }
         
-        Spacer(Modifier.size(8.dp))
+        Spacer(Modifier.size(4.dp))
         
         IconButton(
             onClick = onCameraClick,
             modifier = Modifier
-                .height(48.dp)
+                .height(40.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(MaterialTheme.colorScheme.surface)
                 .enabledButtonModifier(isCameraEnabled)
@@ -284,12 +284,12 @@ fun ControlBar(
             )
         }
         
-        Spacer(Modifier.size(8.dp))
+        Spacer(Modifier.size(4.dp))
         
         IconButton(
             onClick = onScreenShareClick,
             modifier = Modifier
-                .height(48.dp)
+                .height(40.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(MaterialTheme.colorScheme.surface)
                 .enabledButtonModifier(!isScreenShareEnabled)
@@ -301,12 +301,12 @@ fun ControlBar(
             )
         }
         
-        Spacer(Modifier.size(8.dp))
+        Spacer(Modifier.size(4.dp))
         
         IconButton(
             onClick = onChatClick,
             modifier = Modifier
-                .height(48.dp)
+                .height(40.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(MaterialTheme.colorScheme.surface)
         ) {
@@ -317,12 +317,12 @@ fun ControlBar(
             )
         }
         
-        Spacer(Modifier.size(8.dp))
+        Spacer(Modifier.size(4.dp))
         
         IconButton(
             onClick = onExitClick,
             modifier = Modifier
-                .height(48.dp)
+                .height(40.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(MaterialTheme.colorScheme.error)
         ) {
