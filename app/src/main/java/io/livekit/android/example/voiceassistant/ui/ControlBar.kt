@@ -97,17 +97,17 @@ fun ControlBar(
             .clip(RoundedCornerShape(50))
             .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(50))
             .background(MaterialTheme.colorScheme.background.copy(alpha = 0.8f))
-            .padding(horizontal = 8.dp)
+            .padding(horizontal = 10.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .clickable(onClick = onMicClick)
-                .height(32.dp)
+                .height(48.dp)
                 .width(80.dp)
                 .enabledButtonModifier(isMicEnabled)
         ) {
-            Spacer(Modifier.size(3.dp))
+            Spacer(Modifier.size(4.dp))
 
             val micIcon = if (isMicEnabled) {
                 Icons.Default.Mic
@@ -117,24 +117,24 @@ fun ControlBar(
             Icon(
                 micIcon,
                 "Toggle Microphone",
-                modifier = Modifier.size(16.dp)
+                modifier = Modifier.size(20.dp)
             )
 
-            Spacer(Modifier.size(3.dp))
+            Spacer(Modifier.size(4.dp))
 
               if (isMicEnabled && localAudioTrack != null) {
                   AudioBarVisualizer(
                       audioTrackRef = localAudioTrack,
                       modifier = Modifier
                           .fillMaxWidth()
-                          .height(10.dp),
+                          .height(16.dp),
                       barCount = 4
                  )
             } else {
                 Spacer(Modifier.weight(1f))
             }
 
-            Spacer(Modifier.size(3.dp))
+            Spacer(Modifier.size(4.dp))
         }
         
         Box {
@@ -142,7 +142,7 @@ fun ControlBar(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .clickable { audioModeMenuExpanded = true }
-                    .height(32.dp)
+                    .height(48.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(MaterialTheme.colorScheme.surface)
                     .padding(horizontal = 4.dp)
@@ -155,12 +155,12 @@ fun ControlBar(
                 Icon(
                     modeIcon,
                     "Current Audio Mode",
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(20.dp)
                 )
                 Icon(
                     Icons.Default.ExpandMore,
                     "Select Audio Mode",
-                    modifier = Modifier.size(12.dp)
+                    modifier = Modifier.size(16.dp)
                 )
             }
             
@@ -201,21 +201,21 @@ fun ControlBar(
             }
         }
 
-        Spacer(Modifier.size(3.dp))
+        Spacer(Modifier.size(4.dp))
 
         // Sound Menu (背景音 + 键盘音)
         Box {
             IconButton(
                 onClick = { soundMenuExpanded = true },
                 modifier = Modifier
-                    .height(32.dp)
+                    .height(48.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(MaterialTheme.colorScheme.surface)
             ) {
                 Icon(
                     Icons.Default.MusicNote,
                     "Sound Settings",
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(20.dp)
                 )
             }
 
@@ -262,12 +262,12 @@ fun ControlBar(
             }
         }
         
-        Spacer(Modifier.size(3.dp))
+        Spacer(Modifier.size(4.dp))
         
         IconButton(
             onClick = onCameraClick,
             modifier = Modifier
-                .height(32.dp)
+                .height(48.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(MaterialTheme.colorScheme.surface)
                 .enabledButtonModifier(isCameraEnabled)
@@ -280,16 +280,16 @@ fun ControlBar(
             Icon(
                 cameraIcon,
                 "Toggle Camera",
-                modifier = Modifier.size(16.dp)
+                modifier = Modifier.size(20.dp)
             )
         }
         
-        Spacer(Modifier.size(3.dp))
+        Spacer(Modifier.size(4.dp))
         
         IconButton(
             onClick = onScreenShareClick,
             modifier = Modifier
-                .height(32.dp)
+                .height(48.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(MaterialTheme.colorScheme.surface)
                 .enabledButtonModifier(!isScreenShareEnabled)
@@ -297,39 +297,39 @@ fun ControlBar(
             Icon(
                 Icons.Outlined.PresentToAll,
                 "Toggle Screen Share",
-                modifier = Modifier.size(16.dp)
+                modifier = Modifier.size(20.dp)
             )
         }
         
-        Spacer(Modifier.size(3.dp))
+        Spacer(Modifier.size(4.dp))
         
         IconButton(
             onClick = onChatClick,
             modifier = Modifier
-                .height(32.dp)
+                .height(48.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(MaterialTheme.colorScheme.surface)
         ) {
             Icon(
                 Icons.AutoMirrored.Filled.Chat,
                 "Toggle Chat",
-                modifier = Modifier.size(16.dp)
+                modifier = Modifier.size(20.dp)
             )
         }
         
-        Spacer(Modifier.size(3.dp))
+        Spacer(Modifier.size(4.dp))
         
         IconButton(
             onClick = onExitClick,
             modifier = Modifier
-                .height(32.dp)
+                .height(48.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(MaterialTheme.colorScheme.error)
         ) {
             Icon(
                 Icons.Default.CallEnd,
                 "End Call",
-                modifier = Modifier.size(16.dp),
+                modifier = Modifier.size(20.dp),
                 tint = Color.White
             )
         }
@@ -356,4 +356,3 @@ fun ControlBarPreview() {
         )
     }
 }
-
