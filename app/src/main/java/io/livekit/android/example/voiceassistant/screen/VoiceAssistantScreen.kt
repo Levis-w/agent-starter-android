@@ -229,14 +229,14 @@ fun VoiceAssistant(
                         ambientEnabled = enabled
                         coroutineScope.launch {
                             val payload = "{\"type\": \"ambient_toggle\", \"enabled\": $enabled}"
-                            room.localParticipant.publishData(payload.toByteArray(), io.livekit.android.room.DataPublishReliability.RELIABLE)
+                            room.localParticipant.publishData(payload.toByteArray(), io.livekit.android.room.track.DataPublishReliability.RELIABLE)
                         }
                     },
                     onTypingToggle = { enabled ->
                         typingEnabled = enabled
                         coroutineScope.launch {
                             val payload = "{\"type\": \"typing_toggle\", \"enabled\": $enabled}"
-                            room.localParticipant.publishData(payload.toByteArray(), io.livekit.android.room.DataPublishReliability.RELIABLE)
+                            room.localParticipant.publishData(payload.toByteArray(), io.livekit.android.room.track.DataPublishReliability.RELIABLE)
                         }
                     },
                     modifier = Modifier.layoutId(LAYOUT_ID_CONTROL_BAR)
