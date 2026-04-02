@@ -97,18 +97,18 @@ fun ControlBar(
             .clip(RoundedCornerShape(50))
             .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(50))
             .background(MaterialTheme.colorScheme.background.copy(alpha = 0.8f))
-            .padding(horizontal = 12.dp)
+            .padding(horizontal = 8.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .clickable(onClick = onMicClick)
-                .height(40.dp)
-                .width(100.dp)
+                .height(32.dp)
+                .width(80.dp)
                 .enabledButtonModifier(isMicEnabled)
         ) {
-            Spacer(Modifier.size(4.dp))
-            
+            Spacer(Modifier.size(3.dp))
+
             val micIcon = if (isMicEnabled) {
                 Icons.Default.Mic
             } else {
@@ -117,24 +117,24 @@ fun ControlBar(
             Icon(
                 micIcon,
                 "Toggle Microphone",
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(16.dp)
             )
-            
-            Spacer(Modifier.size(4.dp))
-            
+
+            Spacer(Modifier.size(3.dp))
+
               if (isMicEnabled && localAudioTrack != null) {
                   AudioBarVisualizer(
                       audioTrackRef = localAudioTrack,
                       modifier = Modifier
                           .fillMaxWidth()
-                          .height(12.dp),
+                          .height(10.dp),
                       barCount = 4
                  )
             } else {
                 Spacer(Modifier.weight(1f))
             }
-            
-            Spacer(Modifier.size(4.dp))
+
+            Spacer(Modifier.size(3.dp))
         }
         
         Box {
@@ -142,10 +142,10 @@ fun ControlBar(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .clickable { audioModeMenuExpanded = true }
-                    .height(40.dp)
+                    .height(32.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(MaterialTheme.colorScheme.surface)
-                    .padding(horizontal = 6.dp)
+                    .padding(horizontal = 4.dp)
             ) {
                 val modeIcon = when (currentMode) {
                     AudioMode.MEDIA_HIFI -> Icons.Default.MusicNote
@@ -155,12 +155,12 @@ fun ControlBar(
                 Icon(
                     modeIcon,
                     "Current Audio Mode",
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(16.dp)
                 )
                 Icon(
                     Icons.Default.ExpandMore,
                     "Select Audio Mode",
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(12.dp)
                 )
             }
             
@@ -201,21 +201,21 @@ fun ControlBar(
             }
         }
 
-        Spacer(Modifier.size(4.dp))
+        Spacer(Modifier.size(3.dp))
 
         // Sound Menu (背景音 + 键盘音)
         Box {
             IconButton(
                 onClick = { soundMenuExpanded = true },
                 modifier = Modifier
-                    .height(40.dp)
+                    .height(32.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(MaterialTheme.colorScheme.surface)
             ) {
                 Icon(
                     Icons.Default.MusicNote,
                     "Sound Settings",
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(16.dp)
                 )
             }
 
@@ -262,12 +262,12 @@ fun ControlBar(
             }
         }
         
-        Spacer(Modifier.size(4.dp))
+        Spacer(Modifier.size(3.dp))
         
         IconButton(
             onClick = onCameraClick,
             modifier = Modifier
-                .height(40.dp)
+                .height(32.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(MaterialTheme.colorScheme.surface)
                 .enabledButtonModifier(isCameraEnabled)
@@ -280,16 +280,16 @@ fun ControlBar(
             Icon(
                 cameraIcon,
                 "Toggle Camera",
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(16.dp)
             )
         }
         
-        Spacer(Modifier.size(4.dp))
+        Spacer(Modifier.size(3.dp))
         
         IconButton(
             onClick = onScreenShareClick,
             modifier = Modifier
-                .height(40.dp)
+                .height(32.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(MaterialTheme.colorScheme.surface)
                 .enabledButtonModifier(!isScreenShareEnabled)
@@ -297,39 +297,39 @@ fun ControlBar(
             Icon(
                 Icons.Outlined.PresentToAll,
                 "Toggle Screen Share",
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(16.dp)
             )
         }
         
-        Spacer(Modifier.size(4.dp))
+        Spacer(Modifier.size(3.dp))
         
         IconButton(
             onClick = onChatClick,
             modifier = Modifier
-                .height(40.dp)
+                .height(32.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(MaterialTheme.colorScheme.surface)
         ) {
             Icon(
                 Icons.AutoMirrored.Filled.Chat,
                 "Toggle Chat",
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(16.dp)
             )
         }
         
-        Spacer(Modifier.size(4.dp))
+        Spacer(Modifier.size(3.dp))
         
         IconButton(
             onClick = onExitClick,
             modifier = Modifier
-                .height(40.dp)
+                .height(32.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(MaterialTheme.colorScheme.error)
         ) {
             Icon(
                 Icons.Default.CallEnd,
                 "End Call",
-                modifier = Modifier.size(20.dp),
+                modifier = Modifier.size(16.dp),
                 tint = Color.White
             )
         }
@@ -356,3 +356,4 @@ fun ControlBarPreview() {
         )
     }
 }
+
